@@ -77,7 +77,8 @@ class Bird extends RectangleComponent
   void update(double dt) {
     super.update(dt);
 
-    if (gameRef.isGameOver) {
+    // ✅ IMPORTANT: Don't update if game is over but bird is being revived
+    if (gameRef.isGameOver && !isAlive) {
       return;
     }
 
@@ -107,6 +108,8 @@ class Bird extends RectangleComponent
   }
 
   void _checkBoundaries() {
+    if (!isAlive) return; // ✅ Don't check boundaries if bird is dead
+
     if (position.y <= 0) {
       position.y = 0;
       velocity = max(velocity, 0);
@@ -123,9 +126,11 @@ class Bird extends RectangleComponent
   }
 
   void _triggerGameOver() {
-    if (!_isGameOverTriggered && isAlive) {
+    // ✅ Prevent multiple triggers
+    if (!_isGameOverTriggered && isAlive && !gameRef.isGameOver) {
       _hitFlashIntensity = 1.0;
       _isGameOverTriggered = true;
+      isAlive = false; // ✅ Mark as dead immediately
       gameRef.gameOver();
     }
   }
@@ -137,17 +142,45 @@ class Bird extends RectangleComponent
       ) {
     super.onCollisionStart(intersectionPoints, other);
 
-    if (_isGameOverTriggered) return;
+    // ✅ Don't process collisions if game is over or bird is dead/already triggered
+    if (_isGameOverTriggered || !isAlive || gameRef.isGameOver) return;
 
     if (other is Pipe || other is Ground) {
       _triggerGameOver();
     }
   }
 
+  /// ✅ NEW: Proper reset method for revival
+  void revive() {
+    print("🐦 Reviving bird...");
+
+    // Reset all flags
+    _isGameOverTriggered = false;
+    isAlive = true;
+
+    // Reset physics
+    velocity = 0;
+    position = Vector2(100, 300);
+
+    // Reset animations
+    _timeAlive = 0;
+    _hitFlashIntensity = 0;
+    _scalePulse = 0;
+    angle = 0;
+    scale.setValues(1.0, 1.0);
+
+    print("✅ Bird revived and ready to fly!");
+  }
+
+  /// ✅ Keep reset method for full game restart
+  void reset() {
+    revive(); // Reuse revive logic
+  }
+
   @override
   void render(Canvas canvas) {
     // Draw glow effect
-    if (!gameRef.isGameOver) {
+    if (!gameRef.isGameOver && isAlive) {
       final glow = Paint()
         ..color = Colors.yellow.withOpacity(0.3 + sin(_timeAlive * 10) * 0.1)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
@@ -290,17 +323,5 @@ class Bird extends RectangleComponent
     tailPath.lineTo(0, size.y * 0.7);
     tailPath.close();
     canvas.drawPath(tailPath, tailPaint);
-  }
-
-  void reset() {
-    velocity = 0;
-    position = Vector2(100, 300);
-    _isGameOverTriggered = false;
-    _timeAlive = 0;
-    _hitFlashIntensity = 0;
-    _scalePulse = 0;
-    angle = 0;
-    scale.setValues(1.0, 1.0);
-    isAlive = true;
   }
 }

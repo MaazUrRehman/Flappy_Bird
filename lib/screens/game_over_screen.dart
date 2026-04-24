@@ -1,9 +1,6 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:flame/components.dart';
 import '../game/flappy_bird_game.dart';
-
-// ==================== GAME OVER UI (OVERLAY) ====================
+import 'mini_games/word_game_modal.dart'; // Import the new word game
 
 class GameOverUI extends StatefulWidget {
   final FlappyBirdGame game;
@@ -20,138 +17,78 @@ class GameOverUI extends StatefulWidget {
 }
 
 class _GameOverUIState extends State<GameOverUI> {
-
-  // Mini game state
-  String word = "BIRD";
-  String input = "";
-  bool showMiniGame = false;
-  String message = "";
+  bool _showWordGame = false;
 
   @override
   Widget build(BuildContext context) {
-
     return Container(
       color: Colors.black.withOpacity(0.6),
-
       child: Center(
-        child: Container(
-          width: 300,
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: const Color(0xFF0F1A2E),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.green, width: 3),
-          ),
-
-          child: showMiniGame ? _miniGameUI() : _mainUI(),
-        ),
+        child: _showWordGame
+            ? _buildWordGameModal()
+            : _buildMainUI(),
       ),
     );
   }
 
-  // ================= MAIN UI =================
-  Widget _mainUI() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-
-        const Text(
-          "GAME OVER",
-          style: TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
+  // ================= MAIN UI (SAME AS BEFORE) =================
+  Widget _buildMainUI() {
+    return Container(
+      width: 300,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1A2E),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.green, width: 3),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            "GAME OVER",
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
           ),
-        ),
+          const SizedBox(height: 20),
+          _statRow("🪙", "COINS", widget.game.collectedCoins),
+          _divider(),
+          _statRow("⭐", "SCORE", widget.game.score),
+          _divider(),
+          _statRow("🚩", "DISTANCE", widget.game.distance.toInt()),
+          const SizedBox(height: 25),
 
-        const SizedBox(height: 20),
+          // Buttons Row (Exactly same as before - functionality preserved)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              // HOME button - Goes to Home Screen
+              _circleButton(Icons.home, Colors.green, _goHome),
 
-        _statRow("🪙", "COINS", widget.game.collectedCoins),
-        _divider(),
+              // RESTART button - Restarts game immediately
+              _circleButton(Icons.refresh, Colors.orange, _restart),
 
-        _statRow("⭐", "SCORE", widget.game.score),
-        _divider(),
-
-        _statRow("🚩", "DISTANCE", widget.game.distance.toInt()),
-
-        const SizedBox(height: 25),
-
-        // Buttons Row
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-
-            _circleButton(Icons.home, Colors.green, _goHome),
-
-            _circleButton(Icons.refresh, Colors.orange, _restart),
-
-            _circleButton(Icons.play_arrow, Colors.blue, _continueGame),
-          ],
-        )
-      ],
+              // CONTINUE button - Opens word guessing game
+              _circleButton(Icons.play_arrow, Colors.blue, _showWordGameModal),
+            ],
+          )
+        ],
+      ),
     );
   }
 
-  // ================= MINI GAME =================
-  Widget _miniGameUI() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-
-        const Text(
-          "Guess the word",
-          style: TextStyle(color: Colors.white, fontSize: 20),
-        ),
-
-        const SizedBox(height: 10),
-
-        Text(
-          word.replaceAll(RegExp(r"."), "_ "),
-          style: const TextStyle(color: Colors.yellow, fontSize: 24),
-        ),
-
-        TextField(
-          style: const TextStyle(color: Colors.white),
-          onChanged: (val) => input = val.toUpperCase(),
-          decoration: const InputDecoration(
-            hintText: "Enter word",
-            hintStyle: TextStyle(color: Colors.white54),
-          ),
-        ),
-
-        const SizedBox(height: 10),
-
-        Text(message, style: const TextStyle(color: Colors.red)),
-
-        const SizedBox(height: 15),
-
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-
-            ElevatedButton(
-              onPressed: _checkWord,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-              ),
-              child: const Text("Submit", style: TextStyle(color: Colors.white)),
-            ),
-
-            ElevatedButton(
-              onPressed: _cancelToHome,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-              ),
-              child: const Text("Cancel", style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        )
-      ],
+  // ================= WORD GAME MODAL =================
+  Widget _buildWordGameModal() {
+    return WordGameModal(
+      game: widget.game,
+      onCancel: _cancelWordGame,      // Cancel = back to Game Over screen
+      onSuccess: _onWordGameSuccess,   // Success = resume game
     );
   }
 
-  // ================= HELPERS =================
-
+  // ================= HELPER WIDGETS (SAME AS BEFORE) =================
   Widget _statRow(String icon, String title, int value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -191,43 +128,40 @@ class _GameOverUIState extends State<GameOverUI> {
     );
   }
 
-  // ================= BUTTON ACTIONS =================
+  // ================= BUTTON ACTIONS (PRESERVED ORIGINAL LOGIC) =================
 
+  /// RESTART - Complete game restart (same as before)
   void _restart() {
     widget.game.overlays.remove('GameOver');
     widget.game.resumeEngine();
     widget.game.reset();
   }
 
+  /// HOME - Navigate to home screen (same as before)
   void _goHome() {
     widget.game.overlays.remove('GameOver');
     widget.game.pauseEngine();
     widget.onHomePressed();
   }
 
-  void _continueGame() {
+  /// Show Word Game Modal
+  void _showWordGameModal() {
     setState(() {
-      showMiniGame = true;
-      message = "";
-      input = "";
+      _showWordGame = true;
     });
   }
 
-  void _checkWord() {
-    if (input.toUpperCase() == word) {
-      widget.game.overlays.remove('GameOver');
-      widget.game.resumeEngine();
-      widget.game.reviveBird();
-    } else {
-      setState(() {
-        message = "Wrong! Try again";
-        input = "";
-      });
-    }
+  /// Cancel word game - Go back to Game Over UI
+  void _cancelWordGame() {
+    setState(() {
+      _showWordGame = false;
+    });
   }
 
-  void _cancelToHome() {
+  /// Successfully guessed word - Resume the flappy bird game
+  void _onWordGameSuccess() {
     widget.game.overlays.remove('GameOver');
-    widget.onHomePressed();
+    widget.game.resumeEngine();
+    widget.game.reviveBird();  // Your existing revive method
   }
 }

@@ -364,23 +364,12 @@ class FlappyBirdGame extends FlameGame
     }
   }
 
-
-
   void reviveBird() {
     if (isGameOver) {
-      print("🕊️ Reviving bird...");
-
-      // Reset game state flags
       isGameOver = false;
-      _isTransitioning = false;
-
-      // ✅ Call bird's revive method
-      bird.revive();  // Use the new revive method
-
-      // Resume the engine
+      bird.isAlive = true;
       resumeEngine();
-
-      print("✅ Game resumed!");
+      print("🕊️ Bird revived!");
     }
   }
 
