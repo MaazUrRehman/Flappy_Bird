@@ -5,21 +5,23 @@ import 'package:flame/components.dart';
 import 'package:flame/game.dart';
 import 'package:flame/events.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 import '../components/background.dart';
 import '../components/coin.dart';
 import '../components/ground.dart';
 import '../components/bird.dart';
 import '../components/pipe.dart';
-import '../screens/pause_screen.dart';
 import '../systems/spawn_manager.dart';
 import '../systems/score_manager.dart';
 import '../screens/hud.dart';
-import '../screens/game_over_screen.dart';
+import '../controllers/coin_controller.dart';
+import '../controllers/game_state_controller.dart';
+import '../controllers/streak_controller.dart';
+import '../models/difficulty_config.dart';
+import '../services/audio_manager.dart';
 
-class FlappyBirdGame extends FlameGame
-    with TapDetector, HasCollisionDetection {
-
+class FlappyBirdGame extends FlameGame with TapDetector, HasCollisionDetection {
   late Bird bird;
   late ScoreManager scoreManager;
   late SpawnManager spawnManager;
@@ -31,10 +33,249 @@ class FlappyBirdGame extends FlameGame
   bool isGameOver = false;
   bool isPaused = false;
 
+  // ✅ Add this flag to track if game is ready
+  bool _isGameReady = false;
+
   int _collectedCoins = 0;
 
   // Direct distance tracking
   double _distance = 0;
+
+  // ==================== GAME MODE (Difficulty/Level/Streak) ====================
+  String _difficulty = 'easy';
+  int _level = 1;
+  int _streak = 1;
+  bool _isStreakMode = false;
+  DifficultyConfig _difficultyConfig = DifficultyConfig.easy();
+
+  // Streak task tracking
+  String _currentTask = '';
+  String _currentTaskType = 'score';
+  String? _configuredTaskDescription;
+  String? _configuredTaskType;
+  int? _configuredTaskTarget;
+  int _taskProgress = 0;
+  int _taskTarget = 0;
+  bool _taskCompleted = false;
+
+  // Streak preview/completion overlay state
+  bool _showStreakPreview = false;
+  bool _showStreakComplete = false;
+  String _streakPreviewText = '';
+  String _streakCompleteText = '';
+
+  // Getters for game mode
+  String get difficulty => _difficulty;
+  int get level => _level;
+  int get streak => _streak;
+  bool get isStreakMode => _isStreakMode;
+  String get currentTask => _currentTask;
+  int get taskProgress => _taskProgress;
+  int get taskTarget => _taskTarget;
+  bool get taskCompleted => _taskCompleted;
+
+  /// Set game mode for streak-based gameplay
+  void setGameMode({
+    required String difficulty,
+    required int level,
+    required int streak,
+    String? taskDescription,
+    String? taskType,
+    int? taskTarget,
+  }) {
+    _difficulty = difficulty;
+    _level = level;
+    _streak = streak;
+    _isStreakMode = true;
+    _difficultyConfig = DifficultyConfig.fromString(difficulty);
+
+    // Set task description if provided
+    if (taskDescription != null) {
+      _currentTask = taskDescription;
+      _configuredTaskDescription = taskDescription;
+    }
+    if (taskType != null) {
+      _currentTaskType = taskType;
+      _configuredTaskType = taskType;
+    }
+    _configuredTaskTarget = taskTarget;
+
+    // Set difficulty parameters
+    _applyDifficultySettings();
+
+    // Set streak task
+    _setStreakTask(streak);
+
+    // Show streak preview overlay
+    if (taskDescription != null) {
+      _showStreakPreview = true;
+      _streakPreviewText = taskDescription;
+    }
+  }
+
+  /// Apply difficulty-specific settings
+  void _applyDifficultySettings() {
+    // Check if bird is initialized before applying settings
+    if (!_isGameReady) return;
+
+    switch (_difficulty) {
+      case 'easy':
+        bird.gravity = 800;
+        bird.jumpForce = -300;
+        break;
+      case 'medium':
+        bird.gravity = 900;
+        bird.jumpForce = -320;
+        break;
+      case 'hard':
+        bird.gravity = 1000;
+        bird.jumpForce = -340;
+        break;
+      case 'extreme':
+        bird.gravity = 1100;
+        bird.jumpForce = -360;
+        break;
+    }
+  }
+
+  /// Set the task for current streak
+  void _setStreakTask(int streak) {
+    final tasks = [
+      {
+        'task': 'Collect ${_difficultyConfig.coinTarget} coins',
+        'target': _difficultyConfig.coinTarget,
+        'type': 'coins',
+      },
+      {
+        'task': 'Reach score ${_difficultyConfig.targetScore}',
+        'target': _difficultyConfig.targetScore,
+        'type': 'score',
+      },
+      {
+        'task': 'Travel ${_difficultyConfig.distanceTarget}m distance',
+        'target': _difficultyConfig.distanceTarget,
+        'type': 'distance',
+      },
+      {
+        'task': 'Pass ${(_difficultyConfig.targetScore / 5).ceil()} pipes',
+        'target': (_difficultyConfig.targetScore / 5).ceil(),
+        'type': 'pipes',
+      },
+      {
+        'task': 'Survive ${_difficultyConfig.survivalTime} seconds',
+        'target': _difficultyConfig.survivalTime,
+        'type': 'time',
+      },
+      {
+        'task': 'Collect ${_difficultyConfig.coinTarget + 3} coins',
+        'target': _difficultyConfig.coinTarget + 3,
+        'type': 'coins',
+      },
+      {
+        'task': 'Reach score ${_difficultyConfig.targetScore + 10}',
+        'target': _difficultyConfig.targetScore + 10,
+        'type': 'score',
+      },
+    ];
+
+    final taskIndex = (streak - 1) % tasks.length;
+    final taskData = tasks[taskIndex];
+
+    _currentTask = _configuredTaskDescription ?? (taskData['task'] as String);
+    _currentTaskType = _configuredTaskType ?? (taskData['type'] as String);
+    _taskTarget = _configuredTaskTarget ?? (taskData['target'] as int);
+    _taskProgress = 0;
+    _taskCompleted = false;
+  }
+
+// Track pipes passed for streak tasks
+  int _pipesPassed = 0;
+
+  /// Update task progress based on game events
+  void updateTaskProgress(String type, int amount) {
+    if (!_isStreakMode || _taskCompleted) return;
+    if (type != _currentTaskType) return;
+
+    if (type == 'coins') {
+      _taskProgress = _collectedCoins;
+    } else if (type == 'score') {
+      _taskProgress = scoreManager.score;
+    } else if (type == 'distance') {
+      _taskProgress = _distance.toInt();
+    } else if (type == 'pipes') {
+      _taskProgress = _pipesPassed;
+    } else if (type == 'time') {
+      _taskProgress = (_distance / 100).toInt(); // Approximate time
+    }
+
+    if (_taskProgress >= _taskTarget && !_taskCompleted) {
+      _taskCompleted = true;
+      _persistStreakCompletion();
+      _showStreakCompleteOverlay();
+      try {
+        AudioManager.instance.playStreakCompleteSound();
+      } catch (e) {
+        // AudioManager may not be initialized yet.
+      }
+    }
+  }
+
+  Future<void> _persistStreakCompletion() async {
+    try {
+      await GameStateController.instance.completeStreak(
+        _difficulty,
+        _level,
+        _streak,
+        scoreManager.score,
+      );
+      Get.find<StreakController>().completeStreak();
+    } catch (e) {
+      // Controllers may not be available in tests.
+    }
+  }
+
+  /// Show the streak complete overlay
+  void _showStreakCompleteOverlay() {
+    _streakCompleteText = _currentTask;
+    _showStreakComplete = true;
+    overlays.add('StreakComplete');
+  }
+
+  /// Show the streak preview overlay
+  void showStreakPreviewOverlay() {
+    if (_currentTask.isNotEmpty) {
+      _streakPreviewText = _currentTask;
+      _showStreakPreview = true;
+      overlays.add('StreakPreview');
+    }
+  }
+
+  /// Increment pipes passed count
+  void incrementPipesPassed() {
+    _pipesPassed++;
+    updateTaskProgress('pipes', _pipesPassed);
+  }
+
+  /// Check if streak is completed
+  bool isStreakCompleted() {
+    return _taskCompleted;
+  }
+
+  /// Reset game mode
+  void resetGameMode() {
+    _difficulty = 'easy';
+    _level = 1;
+    _streak = 1;
+    _isStreakMode = false;
+    _currentTask = '';
+    _currentTaskType = 'score';
+    _configuredTaskDescription = null;
+    _configuredTaskType = null;
+    _configuredTaskTarget = null;
+    _taskProgress = 0;
+    _taskTarget = 0;
+    _taskCompleted = false;
+  }
 
   // Visual effects
   double _screenShakeIntensity = 0;
@@ -80,6 +321,11 @@ class FlappyBirdGame extends FlameGame
     await super.onLoad();
 
     await _loadBestScores();
+    try {
+      AudioManager.instance.playBackgroundMusic();
+    } catch (e) {
+      // AudioManager may not be initialized yet.
+    }
 
     camera.viewport = MaxViewport();
 
@@ -96,6 +342,7 @@ class FlappyBirdGame extends FlameGame
 
     spawnManager = SpawnManager();
     add(spawnManager);
+    spawnManager.configure(_difficultyConfig);
 
     // Add UI Components
     _hud = HUD();
@@ -105,6 +352,15 @@ class FlappyBirdGame extends FlameGame
     // add(_pauseMenu);
 
     await Future.delayed(const Duration(milliseconds: 500));
+
+    // ✅ Mark game as ready after everything is initialized
+    _isGameReady = true;
+
+    // ✅ Apply difficulty settings if in streak mode
+    if (_isStreakMode) {
+      updateTaskProgress(_currentTaskType, 0);
+      _applyDifficultySettings();
+    }
   }
 
   Future<void> _loadBestScores() async {
@@ -119,6 +375,8 @@ class FlappyBirdGame extends FlameGame
 
   @override
   void onTap() {
+    // ✅ Check if game is ready before handling tap
+    if (!_isGameReady) return;
     _handleGameTap();
   }
 
@@ -135,8 +393,14 @@ class FlappyBirdGame extends FlameGame
       return;
     }
 
+    // ✅ Check if bird is initialized before accessing
     if (bird.isAlive) {
       bird.jump();
+      try {
+        AudioManager.instance.playJumpSound();
+      } catch (e) {
+        // AudioManager may not be initialized yet.
+      }
       _addScreenShake(2);
     }
   }
@@ -158,8 +422,8 @@ class FlappyBirdGame extends FlameGame
 
     if (topPipeBottom != null && bottomPipeTop != null) {
       return (
-      topPipeBottom + 20,
-      bottomPipeTop - 20,
+        topPipeBottom + 20,
+        bottomPipeTop - 20,
       );
     }
     return null;
@@ -189,7 +453,8 @@ class FlappyBirdGame extends FlameGame
     double pipeX = size.x + 50;
 
     for (int i = 0; i < coinCount; i++) {
-      double coinY = safeYRange.$1 + random.nextDouble() * (safeYRange.$2 - safeYRange.$1);
+      double coinY =
+          safeYRange.$1 + random.nextDouble() * (safeYRange.$2 - safeYRange.$1);
       double coinX = pipeX + (i * 35);
 
       if (coinY < 60 || coinY > size.y - 90) {
@@ -276,9 +541,14 @@ class FlappyBirdGame extends FlameGame
 
   void _applyScreenShake(double dt) {
     if (_screenShakeIntensity > 0) {
-      final shakeX = (DateTime.now().millisecondsSinceEpoch % 100) / 100 * _screenShakeIntensity;
-      final shakeY = (DateTime.now().millisecondsSinceEpoch % 67) / 100 * _screenShakeIntensity;
-      _shakeCamera(Vector2(shakeX - _screenShakeIntensity / 2, shakeY - _screenShakeIntensity / 2));
+      final shakeX = (DateTime.now().millisecondsSinceEpoch % 100) /
+          100 *
+          _screenShakeIntensity;
+      final shakeY = (DateTime.now().millisecondsSinceEpoch % 67) /
+          100 *
+          _screenShakeIntensity;
+      _shakeCamera(Vector2(shakeX - _screenShakeIntensity / 2,
+          shakeY - _screenShakeIntensity / 2));
       _screenShakeIntensity *= 0.9;
 
       if (_screenShakeIntensity < 0.1) {
@@ -319,6 +589,14 @@ class FlappyBirdGame extends FlameGame
     _addScreenShake(15);
     _hitStopTimer = 0.3;
 
+    // Play game over sound
+    try {
+      AudioManager.instance.pauseBackgroundMusic();
+      AudioManager.instance.playGameOverSound();
+    } catch (e) {
+      // AudioManager may not be initialized yet
+    }
+
     Future.delayed(const Duration(milliseconds: 300), () {
       pauseEngine();
       // ✅ Directly add overlay
@@ -328,7 +606,8 @@ class FlappyBirdGame extends FlameGame
       _isTransitioning = false;
     });
 
-    print("💀 Game Over! Score: $finalScore | Distance: ${finalDistance}m | Coins: $_collectedCoins");
+    print(
+        "💀 Game Over! Score: $finalScore | Distance: ${finalDistance}m | Coins: $_collectedCoins");
   }
 
   void addCoin(int value) {
@@ -340,6 +619,24 @@ class FlappyBirdGame extends FlameGame
       scoreManager.increaseScore(points: value);
       _hud.notifyScoreIncrease(value);
 
+      // ✅ Add to global coin total via GetX controller
+      try {
+        Get.find<CoinController>().addCoins(value);
+      } catch (e) {
+        // CoinController may not be initialized
+      }
+
+      // Play coin collect sound
+      try {
+        AudioManager.instance.playCoinCollectSound();
+      } catch (e) {
+        // AudioManager may not be initialized
+      }
+
+      // Update task progress for streak mode
+      updateTaskProgress('coins', _collectedCoins);
+      updateTaskProgress('score', scoreManager.score);
+
       print("💰 Coin! +$value | Total: $_collectedCoins");
     }
   }
@@ -348,6 +645,7 @@ class FlappyBirdGame extends FlameGame
     if (!isGameOver && !isPaused) {
       scoreManager.increaseScore(points: points);
       _hud.notifyScoreIncrease(points);
+      updateTaskProgress('score', scoreManager.score);
     }
   }
 
@@ -355,6 +653,7 @@ class FlappyBirdGame extends FlameGame
     if (!isGameOver && !isPaused) {
       scoreManager.increaseScore(points: 5);
       _hud.notifyScoreIncrease(5);
+      updateTaskProgress('score', scoreManager.score);
     }
   }
 
@@ -364,8 +663,6 @@ class FlappyBirdGame extends FlameGame
     }
   }
 
-
-
   void reviveBird() {
     if (isGameOver) {
       print("🕊️ Reviving bird...");
@@ -373,9 +670,10 @@ class FlappyBirdGame extends FlameGame
       // Reset game state flags
       isGameOver = false;
       _isTransitioning = false;
+      _isGameReady = true; // ✅ Reset game ready flag
 
       // ✅ Call bird's revive method
-      bird.revive();  // Use the new revive method
+      bird.revive(); // Use the new revive method
 
       // Resume the engine
       resumeEngine();
@@ -393,6 +691,9 @@ class FlappyBirdGame extends FlameGame
     _collectedCoins = 0;
     _distance = 0;
 
+    // ✅ Temporarily disable game ready flag during reset
+    _isGameReady = false;
+
     // Remove overlay if showing
     if (overlays.isActive('GameOver')) {
       overlays.remove('GameOver');
@@ -403,9 +704,7 @@ class FlappyBirdGame extends FlameGame
     final componentsToRemove = <Component>[];
 
     for (final component in children) {
-      if (component is Background ||
-          component is Ground ||
-          component is HUD ) {
+      if (component is Background || component is Ground || component is HUD) {
         continue;
       }
       componentsToRemove.add(component);
@@ -425,11 +724,21 @@ class FlappyBirdGame extends FlameGame
 
     spawnManager = SpawnManager();
     add(spawnManager);
+    spawnManager.configure(_difficultyConfig);
 
     _shakeCamera(Vector2.zero());
     _screenShakeIntensity = 0;
 
     resumeEngine();
+    try {
+      AudioManager.instance.resumeBackgroundMusic();
+    } catch (e) {
+      // AudioManager may not be initialized yet.
+    }
+
+    // ✅ Small delay to ensure all components are ready
+    await Future.delayed(const Duration(milliseconds: 100));
+    _isGameReady = true;
     _isTransitioning = false;
 
     print("🔄 Game Reset!");
@@ -439,9 +748,12 @@ class FlappyBirdGame extends FlameGame
   void update(double dt) {
     super.update(dt);
 
-    if (!isGameOver && !isPaused && bird.isAlive) {
+    // ✅ Only update if game is ready and not game over
+    if (_isGameReady && !isGameOver && !isPaused && bird.isAlive) {
       _distance += 100 * dt;
       _applyHitStop(dt);
+      updateTaskProgress('distance', _distance.toInt());
+      updateTaskProgress('time', (_distance / 100).toInt());
     }
 
     _applyScreenShake(dt);

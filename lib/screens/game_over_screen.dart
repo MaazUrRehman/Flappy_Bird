@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../game/flappy_bird_game.dart';
+import '../widgets/sound_tap.dart';
 import 'mini_games/word_game_modal.dart'; // Import the new word game
 
 class GameOverUI extends StatefulWidget {
@@ -24,9 +25,7 @@ class _GameOverUIState extends State<GameOverUI> {
     return Container(
       color: Colors.black.withOpacity(0.6),
       child: Center(
-        child: _showWordGame
-            ? _buildWordGameModal()
-            : _buildMainUI(),
+        child: _showWordGame ? _buildWordGameModal() : _buildMainUI(),
       ),
     );
   }
@@ -83,8 +82,8 @@ class _GameOverUIState extends State<GameOverUI> {
   Widget _buildWordGameModal() {
     return WordGameModal(
       game: widget.game,
-      onCancel: _cancelWordGame,      // Cancel = back to Game Over screen
-      onSuccess: _onWordGameSuccess,   // Success = resume game
+      onCancel: _cancelWordGame, // Cancel = back to Game Over screen
+      onSuccess: _onWordGameSuccess, // Success = resume game
     );
   }
 
@@ -99,7 +98,8 @@ class _GameOverUIState extends State<GameOverUI> {
             children: [
               Text(icon, style: const TextStyle(fontSize: 22)),
               const SizedBox(width: 10),
-              Text(title, style: const TextStyle(color: Colors.white, fontSize: 16)),
+              Text(title,
+                  style: const TextStyle(color: Colors.white, fontSize: 16)),
             ],
           ),
           Text(
@@ -118,7 +118,7 @@ class _GameOverUIState extends State<GameOverUI> {
   Widget _divider() => const Divider(color: Colors.white24, height: 1);
 
   Widget _circleButton(IconData icon, Color color, VoidCallback onTap) {
-    return GestureDetector(
+    return SoundTap(
       onTap: onTap,
       child: CircleAvatar(
         radius: 28,
@@ -162,6 +162,6 @@ class _GameOverUIState extends State<GameOverUI> {
   void _onWordGameSuccess() {
     widget.game.overlays.remove('GameOver');
     widget.game.resumeEngine();
-    widget.game.reviveBird();  // Your existing revive method
+    widget.game.reviveBird(); // Your existing revive method
   }
 }

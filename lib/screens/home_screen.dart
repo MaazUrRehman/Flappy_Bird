@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flame/game.dart';
+import 'package:get/get.dart';
 
 import '../game/flappy_bird_game.dart';
 import '../screens/game_over_screen.dart'; // Import GameOverUI
+import '../controllers/coin_controller.dart';
+import 'shop/shop_screen.dart';
+import 'game/difficulty_screen.dart';
+import 'game/levels_screen.dart';
+import '../widgets/sound_tap.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -21,7 +27,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // ✅ Register GameOver overlay BEFORE showing game
     game.overlays.addEntry(
       'GameOver',
-          (context, gameRef) => GameOverUI(
+      (context, gameRef) => GameOverUI(
         game: gameRef as FlappyBirdGame,
         onHomePressed: () {
           // Go back to home screen
@@ -51,7 +57,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // ✅ Register GameOver overlay BEFORE showing game
     game.overlays.addEntry(
       'GameOver',
-          (context, gameRef) => GameOverUI(
+      (context, gameRef) => GameOverUI(
         game: gameRef as FlappyBirdGame,
         onHomePressed: () {
           Navigator.of(context).pop();
@@ -74,23 +80,24 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Color(0xFF1A2A3A),
-              Color(0xFF2A3A4A),
-              Color(0xFF3A4A5A),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+        body: Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Color(0xFF1A2A3A),
+            Color(0xFF2A3A4A),
+            Color(0xFF3A4A5A),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        child: Stack(
-          children: [
-            _buildBackgroundShapes(),
-            SafeArea(
-              child: SingleChildScrollView(
+      ),
+      child: Stack(children: [
+        _buildBackgroundShapes(),
+        SafeArea(
+          child: Stack(
+            children: [
+              SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
                 child: Column(
                   children: [
@@ -122,7 +129,16 @@ class _HomeScreenState extends State<HomeScreen> {
                               title: "Play",
                               icon: Icons.play_arrow,
                               color: Colors.green,
-                              onTap: _startGame, // ✅ Use fixed method
+                              onTap: () {
+                                // Navigate to Difficulty selection
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const DifficultyScreen(),
+                                  ),
+                                );
+                              },
                             ),
                           ),
                           const SizedBox(width: 20),
@@ -132,9 +148,12 @@ class _HomeScreenState extends State<HomeScreen> {
                               icon: Icons.shopping_bag,
                               border: true,
                               onTap: () {
-                                // Store functionality
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Store coming soon!')),
+                                // Navigate to Shop screen
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const ShopScreen(),
+                                  ),
                                 );
                               },
                             ),
@@ -170,28 +189,60 @@ class _HomeScreenState extends State<HomeScreen> {
                                 "No time limit",
                                 Icons.local_cafe,
                                 Colors.green,
-                                onTap: () => _startGameWithDifficulty("easy"),
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          LevelsScreen(difficulty: 'easy'),
+                                    ),
+                                  );
+                                },
                               ),
                               _difficultyCard(
                                 "Normal",
                                 "100 sec",
                                 Icons.timer,
                                 Colors.orange,
-                                onTap: () => _startGameWithDifficulty("normal"),
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          LevelsScreen(difficulty: 'medium'),
+                                    ),
+                                  );
+                                },
                               ),
                               _difficultyCard(
                                 "Hard",
                                 "50 sec",
                                 Icons.fitness_center,
                                 Colors.red,
-                                onTap: () => _startGameWithDifficulty("hard"),
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          LevelsScreen(difficulty: 'hard'),
+                                    ),
+                                  );
+                                },
                               ),
                               _difficultyCard(
                                 "Regret",
                                 "20 sec",
                                 Icons.local_fire_department,
                                 Colors.purple,
-                                onTap: () => _startGameWithDifficulty("regret"),
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          LevelsScreen(difficulty: 'extreme'),
+                                    ),
+                                  );
+                                },
                               ),
                             ],
                           ),
@@ -202,10 +253,54 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
-            ),
-          ],
+              // Coin display at top right
+              Positioned(
+                top: 10,
+                right: 16,
+                child: _buildCoinDisplay(),
+              ),
+            ],
+          ),
         ),
-      ),
+      ]),
+    ));
+  }
+
+  Widget _buildCoinDisplay() {
+    return GetBuilder<CoinController>(
+      init: Get.find<CoinController>(),
+      builder: (controller) {
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.5),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: Colors.amber.withOpacity(0.5),
+              width: 1,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.monetization_on,
+                color: Colors.amber,
+                size: 24,
+              ),
+              const SizedBox(width: 8),
+              Obx(() => Text(
+                    '${Get.find<CoinController>().totalCoins.value}',
+                    style: const TextStyle(
+                      color: Colors.amber,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  )),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -319,34 +414,34 @@ class _HomeScreenState extends State<HomeScreen> {
     Color color = Colors.transparent,
     bool border = false,
   }) {
-    return GestureDetector(
+    return SoundTap(
       onTap: onTap,
       child: Container(
         height: 160,
         decoration: BoxDecoration(
           gradient: border
               ? LinearGradient(
-            colors: [
-              Colors.white.withOpacity(0.1),
-              Colors.white.withOpacity(0.05),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          )
+                  colors: [
+                    Colors.white.withOpacity(0.1),
+                    Colors.white.withOpacity(0.05),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
               : LinearGradient(
-            colors: [
-              color.withOpacity(0.6),
-              color.withOpacity(0.3),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+                  colors: [
+                    color.withOpacity(0.6),
+                    color.withOpacity(0.3),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
           borderRadius: BorderRadius.circular(25),
           border: border
               ? Border.all(
-            color: Colors.white.withOpacity(0.6),
-            width: 2,
-          )
+                  color: Colors.white.withOpacity(0.6),
+                  width: 2,
+                )
               : null,
           boxShadow: [
             BoxShadow(
@@ -388,13 +483,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _difficultyCard(
-      String title,
-      String subtitle,
-      IconData icon,
-      Color accentColor, {
-        VoidCallback? onTap,
-      }) {
-    return GestureDetector(
+    String title,
+    String subtitle,
+    IconData icon,
+    Color accentColor, {
+    VoidCallback? onTap,
+  }) {
+    return SoundTap(
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(

@@ -4,6 +4,7 @@ import 'package:flame/components.dart';
 import '../components/pipe.dart';
 import '../components/coin.dart';
 import '../game/flappy_bird_game.dart';
+import '../models/difficulty_config.dart';
 
 class SpawnManager extends Component with HasGameRef<FlappyBirdGame> {
 
@@ -15,6 +16,10 @@ class SpawnManager extends Component with HasGameRef<FlappyBirdGame> {
   // Difficulty variables
   double pipeSpeed = 180;
   double gap = 200;
+  double _basePipeSpeed = 180;
+  double _baseGap = 200;
+  bool _hasMovingPipes = false;
+  bool _hasRandomPatterns = false;
 
   // Coin spawn tracking
   int _coinsSpawnedThisWave = 0;
@@ -27,6 +32,16 @@ class SpawnManager extends Component with HasGameRef<FlappyBirdGame> {
   // Store current pipe gap position for coin spawning
   double _currentGapY = 0;
   double _currentGapSize = 200;
+
+  void configure(DifficultyConfig config) {
+    _basePipeSpeed = config.pipeSpeed;
+    _baseGap = config.gapSize;
+    pipeSpeed = config.pipeSpeed;
+    gap = config.gapSize;
+    _currentGapSize = config.gapSize;
+    _hasMovingPipes = config.hasMovingPipes;
+    _hasRandomPatterns = config.hasRandomPatterns;
+  }
 
   @override
   void update(double dt) {
@@ -49,7 +64,7 @@ class SpawnManager extends Component with HasGameRef<FlappyBirdGame> {
 
   // ✅ NEW METHOD: Spawn coins ONLY inside pipe gap
   void _spawnCoinsInGap() {
-    _isSpecialWave = (_waveCount % 5 == 0 && _waveCount > 0);
+    _isSpecialWave = (_waveCount % (_hasRandomPatterns ? 3 : 5) == 0 && _waveCount > 0);
 
     // ✅ USE ACTUAL PIPE GAP (NOT RANDOM)
     double gapCenterY = _currentGapY;
@@ -94,6 +109,7 @@ class SpawnManager extends Component with HasGameRef<FlappyBirdGame> {
         coinValue: 1,
         radius: 7,
       );
+      coin.speed = pipeSpeed;
 
       gameRef.add(coin);
     }
@@ -114,6 +130,7 @@ class SpawnManager extends Component with HasGameRef<FlappyBirdGame> {
         coinValue: 2,
         radius: 8,
       );
+      coin.speed = pipeSpeed;
       gameRef.add(coin);
     }
 
@@ -128,13 +145,14 @@ class SpawnManager extends Component with HasGameRef<FlappyBirdGame> {
         coinValue: 2,
         radius: 8,
       );
+      coin.speed = pipeSpeed;
       gameRef.add(coin);
     }
   }
 
   void spawnPipes() {
     final screenHeight = gameRef.size.y;
-    const groundHeight = 55;
+    const groundHeight = 55.0;
 
     // Dynamic gap based on score
     double dynamicGap = _calculateDynamicGap();
@@ -157,7 +175,7 @@ class SpawnManager extends Component with HasGameRef<FlappyBirdGame> {
 
     // Create and add pipes
     _createTopPipe(xPosition, topPipeHeight, currentSpeed);
-    _createBottomPipe(xPosition, bottomPipeHeight, groundHeight as double, currentSpeed);
+    _createBottomPipe(xPosition, bottomPipeHeight, groundHeight, currentSpeed);
 
     // Update difficulty progression
     _updateDifficulty();
@@ -168,11 +186,11 @@ class SpawnManager extends Component with HasGameRef<FlappyBirdGame> {
     int currentScore = gameRef.score;
 
     if (currentScore > 100) {
-      dynamicGap = max(150, gap - (currentScore / 200));
+      dynamicGap = max(_baseGap - 50, _baseGap - (currentScore / 200));
     } else if (currentScore > 50) {
-      dynamicGap = max(165, gap - (currentScore / 150));
+      dynamicGap = max(_baseGap - 35, _baseGap - (currentScore / 150));
     } else if (currentScore > 20) {
-      dynamicGap = max(180, gap - (currentScore / 100));
+      dynamicGap = max(_baseGap - 20, _baseGap - (currentScore / 100));
     }
 
     // Special waves have slightly larger gaps (easier to collect special coins)
@@ -188,11 +206,11 @@ class SpawnManager extends Component with HasGameRef<FlappyBirdGame> {
     int currentScore = gameRef.score;
 
     if (currentScore > 100) {
-      currentSpeed = min(320, 180 + (currentScore / 2.5));
+      currentSpeed = min(_basePipeSpeed + 140, _basePipeSpeed + (currentScore / 2.5));
     } else if (currentScore > 50) {
-      currentSpeed = min(280, 180 + (currentScore / 3));
+      currentSpeed = min(_basePipeSpeed + 100, _basePipeSpeed + (currentScore / 3));
     } else if (currentScore > 20) {
-      currentSpeed = min(240, 180 + (currentScore / 4));
+      currentSpeed = min(_basePipeSpeed + 60, _basePipeSpeed + (currentScore / 4));
     }
 
     return currentSpeed;
@@ -205,6 +223,7 @@ class SpawnManager extends Component with HasGameRef<FlappyBirdGame> {
       pipeType: PipeType.top,
     );
     topPipe.speed = speed;
+    topPipe.setMovement(enabled: _hasMovingPipes, phase: 0);
     gameRef.add(topPipe);
   }
 
@@ -217,6 +236,7 @@ class SpawnManager extends Component with HasGameRef<FlappyBirdGame> {
       pipeType: PipeType.bottom,
     );
     bottomPipe.speed = speed;
+    bottomPipe.setMovement(enabled: _hasMovingPipes, phase: pi);
     gameRef.add(bottomPipe);
   }
 
@@ -226,16 +246,16 @@ class SpawnManager extends Component with HasGameRef<FlappyBirdGame> {
     // Dynamic spawn interval based on score
     if (currentScore > 100) {
       spawnInterval = max(1.3, 2.5 - (currentScore / 300));
-      pipeSpeed = min(320, 180 + (currentScore / 2.5));
-      gap = max(150, 200 - (currentScore / 20));
+      pipeSpeed = min(_basePipeSpeed + 140, _basePipeSpeed + (currentScore / 2.5));
+      gap = max(_baseGap - 50, _baseGap - (currentScore / 20));
     } else if (currentScore > 50) {
       spawnInterval = max(1.5, 2.5 - (currentScore / 200));
-      pipeSpeed = min(280, 180 + (currentScore / 3));
-      gap = max(165, 200 - (currentScore / 25));
+      pipeSpeed = min(_basePipeSpeed + 100, _basePipeSpeed + (currentScore / 3));
+      gap = max(_baseGap - 35, _baseGap - (currentScore / 25));
     } else if (currentScore > 20) {
       spawnInterval = max(1.8, 2.5 - (currentScore / 100));
-      pipeSpeed = min(240, 180 + (currentScore / 4));
-      gap = max(180, 200 - (currentScore / 30));
+      pipeSpeed = min(_basePipeSpeed + 60, _basePipeSpeed + (currentScore / 4));
+      gap = max(_baseGap - 20, _baseGap - (currentScore / 30));
     }
 
     // Special wave adjustment
@@ -260,13 +280,13 @@ class SpawnManager extends Component with HasGameRef<FlappyBirdGame> {
   void reset() {
     spawnTimer = 0;
     spawnInterval = 2.5;
-    pipeSpeed = 180;
-    gap = 200;
+    pipeSpeed = _basePipeSpeed;
+    gap = _baseGap;
     _coinsSpawnedThisWave = 0;
     _waveCount = 0;
     _isSpecialWave = false;
     _wavesSinceLastSpecial = 0;
     _currentGapY = 0;
-    _currentGapSize = 200;
+    _currentGapSize = _baseGap;
   }
 }

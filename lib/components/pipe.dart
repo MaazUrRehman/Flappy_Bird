@@ -10,6 +10,9 @@ class Pipe extends RectangleComponent with CollisionCallbacks, HasGameRef<Flappy
   double speed = 200;
   PipeType pipeType;
   bool _scoreGiven = false;  // ✅ Track if score already given for this pipe
+  bool _isMoving = false;
+  double _movePhase = 0;
+  double _baseY = 0;
 
   // Visual components
   late RectangleComponent _pipeBody;
@@ -55,6 +58,7 @@ class Pipe extends RectangleComponent with CollisionCallbacks, HasGameRef<Flappy
     await super.onLoad();
 
     // Setup visual layers
+    _baseY = position.y;
     _setupVisualLayers();
 
     // Setup gradients
@@ -172,6 +176,12 @@ class Pipe extends RectangleComponent with CollisionCallbacks, HasGameRef<Flappy
     _isGlowing = glowing;
   }
 
+  void setMovement({required bool enabled, double phase = 0}) {
+    _isMoving = enabled;
+    _movePhase = phase;
+    _baseY = position.y;
+  }
+
   @override
   void update(double dt) {
     super.update(dt);
@@ -180,6 +190,9 @@ class Pipe extends RectangleComponent with CollisionCallbacks, HasGameRef<Flappy
 
     // Move pipe
     position.x -= speed * dt;
+    if (_isMoving) {
+      position.y = _baseY + sin(_time * 2.2 + _movePhase) * 18;
+    }
 
     // ✅ FIXED: Score logic - Sirf bottom pipe pe aur sirf ek baar
     if (!_scoreGiven &&
@@ -191,6 +204,7 @@ class Pipe extends RectangleComponent with CollisionCallbacks, HasGameRef<Flappy
         _scoreGiven = true;
         // +5 score for passing pipe
         gameRef.addScore(5);
+        gameRef.incrementPipesPassed();
         print("✅ Pipe passed! +5 points. Total: ${gameRef.score}");
       }
     }

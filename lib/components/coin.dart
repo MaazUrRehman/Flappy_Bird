@@ -29,7 +29,7 @@ class Coin extends CircleComponent
   double radius;
 
   // Particles
-  List<Sparkle> _sparkles = [];
+  final List<Sparkle> _sparkles = [];
   bool _isCollected = false;
   double _collectionAnimation = 0;
 
@@ -49,7 +49,7 @@ class Coin extends CircleComponent
   Future<void> onLoad() async {
     await super.onLoad();
 
-    this.radius = radius; // Apply custom radius
+    radius = radius; // Apply custom radius
 
     _setupCoinType();
     _setupGradients();
@@ -68,10 +68,10 @@ class Coin extends CircleComponent
 
   void _setupGradients() {
     _coinGradient = Paint()
-      ..shader = RadialGradient(
-        center: const Alignment(0.2, 0.3),
+      ..shader = const RadialGradient(
+        center: Alignment(0.2, 0.3),
         radius: 0.8,
-        colors: const [
+        colors: [
           Color(0xFFFFF8E7),
           Color(0xFFFFD700),
           Color(0xFFDAA520),
@@ -84,10 +84,10 @@ class Coin extends CircleComponent
       ));
 
     _innerGradient = Paint()
-      ..shader = RadialGradient(
+      ..shader = const RadialGradient(
         center: Alignment.center,
         radius: 0.6,
-        colors: const [
+        colors: [
           Color(0xFFFFE44D),
           Color(0xFFDAA520),
         ],

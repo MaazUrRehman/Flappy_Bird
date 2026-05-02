@@ -1,6 +1,9 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import '../../game/flappy_bird_game.dart';
+import '../../services/audio_manager.dart';
+import '../../widgets/sound_tap.dart';
 
 /// Word guessing game modal that appears when player wants to continue
 class WordGameModal extends StatefulWidget {
@@ -107,6 +110,12 @@ class _WordGameModalState extends State<WordGameModal> {
       if (isCorrect) {
         _message = '✓ Correct!';
         _isMessageError = false;
+        // Play correct answer sound
+        try {
+          AudioManager.instance.playCorrectAnswerSound();
+        } catch (e) {
+          // AudioManager may not be initialized
+        }
 
         if (_wordGame.isWordFullyGuessed()) {
           // Word completed - show success and start countdown
@@ -119,9 +128,16 @@ class _WordGameModalState extends State<WordGameModal> {
         _attemptsLeft--;
         _message = '✗ Wrong guess! $_attemptsLeft attempts remaining';
         _isMessageError = true;
+        // Play wrong answer sound
+        try {
+          AudioManager.instance.playWrongAnswerSound();
+        } catch (e) {
+          // AudioManager may not be initialized
+        }
 
         if (_attemptsLeft <= 0) {
-          _message = 'Game over! The word was "${_wordGame.originalWord.toUpperCase()}"';
+          _message =
+              'Game over! The word was "${_wordGame.originalWord.toUpperCase()}"';
           Future.delayed(const Duration(milliseconds: 1500), () {
             if (mounted) {
               widget.onCancel();
@@ -157,7 +173,8 @@ class _WordGameModalState extends State<WordGameModal> {
           _isMessageError = true;
 
           if (_attemptsLeft <= 0) {
-            _message = 'Game over! The word was "${_wordGame.originalWord.toUpperCase()}"';
+            _message =
+                'Game over! The word was "${_wordGame.originalWord.toUpperCase()}"';
             Future.delayed(const Duration(milliseconds: 1500), () {
               if (mounted) {
                 widget.onCancel();
@@ -209,27 +226,27 @@ class _WordGameModalState extends State<WordGameModal> {
         child: _showCountdown
             ? _buildCountdownWidget()
             : SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildHeader(),
-              const SizedBox(height: 16),
-              _buildWordDisplay(),
-              const SizedBox(height: 12),
-              _buildHintText(),
-              const SizedBox(height: 15),
-              _buildInputField(),
-              const SizedBox(height: 12),
-              _buildMessage(),
-              const SizedBox(height: 12),
-              _buildAttemptsRemaining(),
-              const SizedBox(height: 15),
-              _buildVirtualKeyboard(),
-              const SizedBox(height: 12),
-              _buildActionButtons(),
-            ],
-          ),
-        ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildHeader(),
+                    const SizedBox(height: 16),
+                    _buildWordDisplay(),
+                    const SizedBox(height: 12),
+                    _buildHintText(),
+                    const SizedBox(height: 15),
+                    _buildInputField(),
+                    const SizedBox(height: 12),
+                    _buildMessage(),
+                    const SizedBox(height: 12),
+                    _buildAttemptsRemaining(),
+                    const SizedBox(height: 15),
+                    _buildVirtualKeyboard(),
+                    const SizedBox(height: 12),
+                    _buildActionButtons(),
+                  ],
+                ),
+              ),
       ),
     );
   }
@@ -389,14 +406,19 @@ class _WordGameModalState extends State<WordGameModal> {
         onSubmitted: (value) => _handleTextGuess(value),
         decoration: InputDecoration(
           hintText: 'Enter a letter or word...',
-          hintStyle: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
+          hintStyle:
+              TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
           prefixIcon: const Icon(Icons.edit, color: Colors.amber, size: 18),
           suffixIcon: IconButton(
             icon: const Icon(Icons.send, color: Colors.amber, size: 18),
-            onPressed: () => _handleTextGuess(_guessController.text),
+            onPressed: () {
+              playClickSound();
+              _handleTextGuess(_guessController.text);
+            },
           ),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         ),
       ),
     );
@@ -461,15 +483,22 @@ class _WordGameModalState extends State<WordGameModal> {
           runSpacing: 4,
           alignment: WrapAlignment.center,
           children: _letters.map((letter) {
-            bool isGuessed = _wordGame.guessedLetters.contains(letter.toLowerCase());
+            bool isGuessed =
+                _wordGame.guessedLetters.contains(letter.toLowerCase());
             bool isWrong = _wrongGuesses.contains(letter);
-            bool isDisabled = isGuessed || isWrong || _wordGame.isWordFullyGuessed();
+            bool isDisabled =
+                isGuessed || isWrong || _wordGame.isWordFullyGuessed();
 
             return SizedBox(
               width: 32,
               height: 32,
               child: ElevatedButton(
-                onPressed: isDisabled ? null : () => _handleLetterGuess(letter.toLowerCase()),
+                onPressed: isDisabled
+                    ? null
+                    : () {
+                        playClickSound();
+                        _handleLetterGuess(letter.toLowerCase());
+                      },
                 style: ElevatedButton.styleFrom(
                   padding: EdgeInsets.zero,
                   minimumSize: const Size(0, 0),
@@ -477,8 +506,8 @@ class _WordGameModalState extends State<WordGameModal> {
                   backgroundColor: isGuessed
                       ? Colors.green
                       : (isWrong
-                      ? Colors.red.withOpacity(0.5)
-                      : Colors.white.withOpacity(0.2)),
+                          ? Colors.red.withOpacity(0.5)
+                          : Colors.white.withOpacity(0.2)),
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(6),
@@ -507,7 +536,10 @@ class _WordGameModalState extends State<WordGameModal> {
       children: [
         Expanded(
           child: ElevatedButton.icon(
-            onPressed: () => widget.onCancel(),
+            onPressed: () {
+              playClickSound();
+              widget.onCancel();
+            },
             icon: const Icon(Icons.close, size: 14),
             label: const Text("CANCEL", style: TextStyle(fontSize: 11)),
             style: ElevatedButton.styleFrom(
@@ -524,7 +556,10 @@ class _WordGameModalState extends State<WordGameModal> {
         if (_wordGame.isWordFullyGuessed())
           Expanded(
             child: ElevatedButton.icon(
-              onPressed: _startCountdown,
+              onPressed: () {
+                playClickSound();
+                _startCountdown();
+              },
               icon: const Icon(Icons.play_arrow, size: 14),
               label: const Text("RESUME", style: TextStyle(fontSize: 11)),
               style: ElevatedButton.styleFrom(
@@ -543,10 +578,7 @@ class _WordGameModalState extends State<WordGameModal> {
 
   String _getFormattedDisplayWord() {
     if (_wordGame.displayedWord.isEmpty) return '';
-    return _wordGame.displayedWord
-        .toUpperCase()
-        .split('')
-        .join(' ');
+    return _wordGame.displayedWord.toUpperCase().split('').join(' ');
   }
 }
 
@@ -555,13 +587,58 @@ class WordGuessingGame {
   static final Random _random = Random();
 
   static const List<String> _wordBank = [
-    'bird', 'flame', 'apple', 'house', 'happy', 'flower', 'garden', 'rocket',
-    'puzzle', 'guitar', 'planet', 'jungle', 'animal', 'forest', 'winter',
-    'summer', 'spring', 'autumn', 'clouds', 'bridge', 'castle', 'dragon',
-    'eagle', 'falcon', 'tiger', 'lion', 'panda', 'koala', 'zebra', 'camel',
-    'ocean', 'river', 'mountain', 'valley', 'desert', 'island', 'sunset',
-    'rainbow', 'butterfly', 'diamond', 'silver', 'golden', 'copper', 'bronze',
-    'magic', 'sugar', 'honey', 'sweet', 'light', 'sound', 'music', 'dance'
+    'bird',
+    'flame',
+    'apple',
+    'house',
+    'happy',
+    'flower',
+    'garden',
+    'rocket',
+    'puzzle',
+    'guitar',
+    'planet',
+    'jungle',
+    'animal',
+    'forest',
+    'winter',
+    'summer',
+    'spring',
+    'autumn',
+    'clouds',
+    'bridge',
+    'castle',
+    'dragon',
+    'eagle',
+    'falcon',
+    'tiger',
+    'lion',
+    'panda',
+    'koala',
+    'zebra',
+    'camel',
+    'ocean',
+    'river',
+    'mountain',
+    'valley',
+    'desert',
+    'island',
+    'sunset',
+    'rainbow',
+    'butterfly',
+    'diamond',
+    'silver',
+    'golden',
+    'copper',
+    'bronze',
+    'magic',
+    'sugar',
+    'honey',
+    'sweet',
+    'light',
+    'sound',
+    'music',
+    'dance'
   ];
 
   String originalWord = '';
@@ -672,7 +749,9 @@ class WordGuessingGame {
       'wordLength': originalWord.length,
       'revealedLetters': guessedLetters.length,
       'totalUniqueLetters': originalWord.split('').toSet().length,
-      'progress': (displayedWord.replaceAll('_', '').length / originalWord.length * 100).round(),
+      'progress':
+          (displayedWord.replaceAll('_', '').length / originalWord.length * 100)
+              .round(),
       'isComplete': isWordFullyGuessed(),
     };
   }
