@@ -6,7 +6,6 @@ import 'screens/splash_screen.dart';
 import 'game/flappy_bird_game.dart';
 import 'screens/game_over_screen.dart';
 import 'controllers/game_state_controller.dart';
-import 'controllers/coin_controller.dart';
 import 'controllers/game_config_controller.dart';
 import 'controllers/level_controller.dart';
 import 'controllers/streak_controller.dart';
@@ -27,9 +26,6 @@ void main() async {
 void _initializeServices() {
   // Initialize GameStateController (persistent storage)
   Get.put(GameStateController(), permanent: true);
-
-  // Initialize CoinController (coin management)
-  Get.put(CoinController(), permanent: true);
 
   // Initialize GameConfigController (bird/environment selection)
   Get.put(GameConfigController(), permanent: true);

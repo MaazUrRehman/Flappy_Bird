@@ -7,7 +7,6 @@ import '../game/flappy_bird_game.dart';
 import '../models/difficulty_config.dart';
 
 class SpawnManager extends Component with HasGameRef<FlappyBirdGame> {
-
   double spawnTimer = 0;
   double spawnInterval = 2.5;
 
@@ -47,7 +46,8 @@ class SpawnManager extends Component with HasGameRef<FlappyBirdGame> {
   void update(double dt) {
     super.update(dt);
 
-    if (gameRef.isGameOver || gameRef.isPaused) return;
+    if (gameRef.isGameOver || gameRef.isPaused || gameRef.isCountdownActive)
+      return;
 
     spawnTimer += dt;
 
@@ -64,7 +64,8 @@ class SpawnManager extends Component with HasGameRef<FlappyBirdGame> {
 
   // ✅ NEW METHOD: Spawn coins ONLY inside pipe gap
   void _spawnCoinsInGap() {
-    _isSpecialWave = (_waveCount % (_hasRandomPatterns ? 3 : 5) == 0 && _waveCount > 0);
+    _isSpecialWave =
+        (_waveCount % (_hasRandomPatterns ? 3 : 5) == 0 && _waveCount > 0);
 
     // ✅ USE ACTUAL PIPE GAP (NOT RANDOM)
     double gapCenterY = _currentGapY;
@@ -86,8 +87,6 @@ class SpawnManager extends Component with HasGameRef<FlappyBirdGame> {
     _wavesSinceLastSpecial++;
   }
 
-
-
   // ✅ NEW: Spawn random coins strictly inside gap
   void _spawnRandomCoinsInGap(double minY, double maxY) {
     if (random.nextDouble() > 0.7) return;
@@ -97,7 +96,6 @@ class SpawnManager extends Component with HasGameRef<FlappyBirdGame> {
     double pipeX = gameRef.size.x + 50;
 
     for (int i = 0; i < coinCount; i++) {
-
       double coinY = minY + random.nextDouble() * (maxY - minY);
 
       // ✅ IMPORTANT: SHIFT COIN AWAY FROM PIPE
@@ -165,8 +163,10 @@ class SpawnManager extends Component with HasGameRef<FlappyBirdGame> {
     double minHeight = 60;
     double maxHeight = screenHeight - dynamicGap - groundHeight - 60;
 
-    double topPipeHeight = minHeight + random.nextDouble() * (maxHeight - minHeight);
-    double bottomPipeHeight = screenHeight - topPipeHeight - dynamicGap - groundHeight;
+    double topPipeHeight =
+        minHeight + random.nextDouble() * (maxHeight - minHeight);
+    double bottomPipeHeight =
+        screenHeight - topPipeHeight - dynamicGap - groundHeight;
 
     // ✅ Store gap center for coin spawning
     _currentGapY = topPipeHeight + (dynamicGap / 2);
@@ -206,11 +206,14 @@ class SpawnManager extends Component with HasGameRef<FlappyBirdGame> {
     int currentScore = gameRef.score;
 
     if (currentScore > 100) {
-      currentSpeed = min(_basePipeSpeed + 140, _basePipeSpeed + (currentScore / 2.5));
+      currentSpeed =
+          min(_basePipeSpeed + 140, _basePipeSpeed + (currentScore / 2.5));
     } else if (currentScore > 50) {
-      currentSpeed = min(_basePipeSpeed + 100, _basePipeSpeed + (currentScore / 3));
+      currentSpeed =
+          min(_basePipeSpeed + 100, _basePipeSpeed + (currentScore / 3));
     } else if (currentScore > 20) {
-      currentSpeed = min(_basePipeSpeed + 60, _basePipeSpeed + (currentScore / 4));
+      currentSpeed =
+          min(_basePipeSpeed + 60, _basePipeSpeed + (currentScore / 4));
     }
 
     return currentSpeed;
@@ -227,7 +230,8 @@ class SpawnManager extends Component with HasGameRef<FlappyBirdGame> {
     gameRef.add(topPipe);
   }
 
-  void _createBottomPipe(double xPosition, double height, double groundHeight, double speed) {
+  void _createBottomPipe(
+      double xPosition, double height, double groundHeight, double speed) {
     final screenHeight = gameRef.size.y;
 
     Pipe bottomPipe = Pipe(
@@ -246,11 +250,13 @@ class SpawnManager extends Component with HasGameRef<FlappyBirdGame> {
     // Dynamic spawn interval based on score
     if (currentScore > 100) {
       spawnInterval = max(1.3, 2.5 - (currentScore / 300));
-      pipeSpeed = min(_basePipeSpeed + 140, _basePipeSpeed + (currentScore / 2.5));
+      pipeSpeed =
+          min(_basePipeSpeed + 140, _basePipeSpeed + (currentScore / 2.5));
       gap = max(_baseGap - 50, _baseGap - (currentScore / 20));
     } else if (currentScore > 50) {
       spawnInterval = max(1.5, 2.5 - (currentScore / 200));
-      pipeSpeed = min(_basePipeSpeed + 100, _basePipeSpeed + (currentScore / 3));
+      pipeSpeed =
+          min(_basePipeSpeed + 100, _basePipeSpeed + (currentScore / 3));
       gap = max(_baseGap - 35, _baseGap - (currentScore / 25));
     } else if (currentScore > 20) {
       spawnInterval = max(1.8, 2.5 - (currentScore / 100));

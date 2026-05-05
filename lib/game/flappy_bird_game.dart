@@ -15,7 +15,6 @@ import '../components/pipe.dart';
 import '../systems/spawn_manager.dart';
 import '../systems/score_manager.dart';
 import '../screens/hud.dart';
-import '../controllers/coin_controller.dart';
 import '../controllers/game_state_controller.dart';
 import '../controllers/streak_controller.dart';
 import '../models/difficulty_config.dart';
@@ -33,8 +32,11 @@ class FlappyBirdGame extends FlameGame with TapDetector, HasCollisionDetection {
   bool isGameOver = false;
   bool isPaused = false;
 
-  // ✅ Add this flag to track if game is ready
+  // Countdown / start sequence
   bool _isGameReady = false;
+  bool _isCountdownActive = false;
+  bool _isUserControlEnabled = true;
+  bool _countdownPending = false;
 
   int _collectedCoins = 0;
 
@@ -111,6 +113,29 @@ class FlappyBirdGame extends FlameGame with TapDetector, HasCollisionDetection {
       _showStreakPreview = true;
       _streakPreviewText = taskDescription;
     }
+  }
+
+  bool get isCountdownActive => _isCountdownActive;
+  bool get isUserControlEnabled => _isUserControlEnabled;
+
+  /// Prepare the game for the pre-start countdown sequence.
+  void prepareStartCountdown() {
+    _isCountdownActive = true;
+    _isUserControlEnabled = false;
+    _countdownPending = true;
+    if (_isGameReady) {
+      bird.gravity = 0;
+      bird.velocity = 0;
+    }
+  }
+
+  /// Complete the countdown and enable normal gameplay.
+  void completeStartCountdown() {
+    if (!_isCountdownActive) return;
+    _isCountdownActive = false;
+    _isUserControlEnabled = true;
+    _countdownPending = false;
+    _applyDifficultySettings();
   }
 
   /// Apply difficulty-specific settings
@@ -361,6 +386,12 @@ class FlappyBirdGame extends FlameGame with TapDetector, HasCollisionDetection {
       updateTaskProgress(_currentTaskType, 0);
       _applyDifficultySettings();
     }
+
+    if (_isCountdownActive && _countdownPending) {
+      bird.gravity = 0;
+      bird.velocity = 0;
+      _countdownPending = false;
+    }
   }
 
   Future<void> _loadBestScores() async {
@@ -376,7 +407,7 @@ class FlappyBirdGame extends FlameGame with TapDetector, HasCollisionDetection {
   @override
   void onTap() {
     // ✅ Check if game is ready before handling tap
-    if (!_isGameReady) return;
+    if (!_isGameReady || _isCountdownActive) return;
     _handleGameTap();
   }
 
@@ -389,7 +420,6 @@ class FlappyBirdGame extends FlameGame with TapDetector, HasCollisionDetection {
     }
 
     if (isPaused) {
-      togglePause();
       return;
     }
 
@@ -521,18 +551,25 @@ class FlappyBirdGame extends FlameGame with TapDetector, HasCollisionDetection {
     return pipes;
   }
 
+  void pauseGame() {
+    if (isGameOver || isPaused) return;
+    isPaused = true;
+    pauseEngine();
+  }
+
+  void resumeGame() {
+    if (isGameOver || !isPaused) return;
+    isPaused = false;
+    resumeEngine();
+  }
+
   void togglePause() {
     if (isGameOver) return;
-
-    isPaused = !isPaused;
-
-    // if (isPaused) {
-    //   pauseEngine();
-    //   _pauseMenu.show();
-    // } else {
-    //   resumeEngine();
-    //   _pauseMenu.hide();
-    // }
+    if (isPaused) {
+      resumeGame();
+    } else {
+      pauseGame();
+    }
   }
 
   void _addScreenShake(double intensity) {
@@ -619,12 +656,8 @@ class FlappyBirdGame extends FlameGame with TapDetector, HasCollisionDetection {
       scoreManager.increaseScore(points: value);
       _hud.notifyScoreIncrease(value);
 
-      // ✅ Add to global coin total via GetX controller
-      try {
-        Get.find<CoinController>().addCoins(value);
-      } catch (e) {
-        // CoinController may not be initialized
-      }
+      // ✅ Add to global coin total via shared GameStateController
+      GameStateController.instance.addGameCoins(value);
 
       // Play coin collect sound
       try {
@@ -748,8 +781,12 @@ class FlappyBirdGame extends FlameGame with TapDetector, HasCollisionDetection {
   void update(double dt) {
     super.update(dt);
 
-    // ✅ Only update if game is ready and not game over
-    if (_isGameReady && !isGameOver && !isPaused && bird.isAlive) {
+    // ✅ Only update normal gameplay while ready and not paused/over
+    if (_isGameReady &&
+        !isGameOver &&
+        !isPaused &&
+        !_isCountdownActive &&
+        bird.isAlive) {
       _distance += 100 * dt;
       _applyHitStop(dt);
       updateTaskProgress('distance', _distance.toInt());

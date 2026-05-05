@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../controllers/game_state_controller.dart';
@@ -6,6 +8,7 @@ import '../../game/flappy_bird_game.dart';
 import '../../models/level_config.dart';
 import '../../widgets/sound_tap.dart';
 import '../game_over_screen.dart';
+import '../pause_screen.dart';
 import 'package:flame/game.dart';
 
 /// StreakScreen - Shows streaks for a specific level
@@ -115,9 +118,8 @@ class StreakScreen extends StatelessWidget {
                   final completed = gameState.completedStreaks.toList();
                   final levelCompleted =
                       levelController.completedStreaks.toList();
-                  final unlockedLevel =
-                      levelController.unlockedLevels[difficulty] ?? 1;
-                  final progress = Map<String, int>.from(gameState.levelProgress);
+                  final progress =
+                      Map<String, int>.from(gameState.levelProgress);
 
                   return ListView.builder(
                     padding: const EdgeInsets.all(16),
@@ -126,7 +128,11 @@ class StreakScreen extends StatelessWidget {
                       final streak = index + 1;
                       final taskConfig = levelConfig.streaks[index];
                       final streakKey = '${difficulty}_${level}_$streak';
-                      final isUnlocked = level <= unlockedLevel;
+                      final isUnlocked = levelController.isStreakUnlocked(
+                        difficulty,
+                        level,
+                        streak,
+                      );
                       final isCompleted = completed.contains(streakKey) ||
                           levelCompleted.contains(streakKey);
                       final bestScore = progress[streakKey] ?? 0;
@@ -171,8 +177,8 @@ class StreakScreen extends StatelessWidget {
       taskTarget: taskConfig.target,
     );
 
-    // Pause the engine before showing the preview overlay
-    game.pauseEngine();
+    // Prepare the game for the pre-start countdown sequence
+    game.prepareStartCountdown();
 
     // Register Streak Preview overlay (shown before game starts)
     game.overlays.addEntry(
@@ -213,6 +219,22 @@ class StreakScreen extends StatelessWidget {
       ),
     );
 
+    // Register Pause button and menu overlay
+    game.overlays.addEntry(
+      'PauseButton',
+      (context, gameRef) => PauseButtonOverlay(game: gameRef as FlappyBirdGame),
+    );
+    game.overlays.addEntry(
+      'PauseMenu',
+      (context, gameRef) => PauseMenuOverlay(
+        game: gameRef as FlappyBirdGame,
+        onHomePressed: () {
+          Navigator.of(context).pop();
+        },
+      ),
+    );
+    game.overlays.add('PauseButton');
+
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -242,70 +264,111 @@ class _StreakPreviewOverlay extends StatefulWidget {
 }
 
 class _StreakPreviewOverlayState extends State<_StreakPreviewOverlay> {
+  int _countdownValue = 3;
+  Timer? _countdownTimer;
+
   @override
   void initState() {
     super.initState();
-    // Auto-dismiss after 3 seconds and start game
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
-        // Remove the overlay
-        widget.game.overlays.remove('StreakPreview');
-        // ✅ Resume game engine after modal is dismissed
-        widget.game.resumeEngine();
+    widget.game.prepareStartCountdown();
+    _startCountdown();
+  }
+
+  void _startCountdown() {
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
       }
+
+      if (_countdownValue > 1) {
+        setState(() {
+          _countdownValue--;
+        });
+        return;
+      }
+
+      timer.cancel();
+      _finishCountdown();
     });
+  }
+
+  void _finishCountdown() {
+    widget.game.completeStartCountdown();
+    if (mounted) {
+      widget.game.overlays.remove('StreakPreview');
+    }
+  }
+
+  @override
+  void dispose() {
+    _countdownTimer?.cancel();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final displayText = _countdownValue == 1 ? 'Get Ready' : '$_countdownValue';
     return Material(
       color: Colors.black.withOpacity(0.8),
       child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.flag,
-              color: Colors.amber,
-              size: 64,
-            ),
-            const SizedBox(height: 24),
-            const Text(
-              'STREAK TASK',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 2,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.flag,
+                color: Colors.amber,
+                size: 64,
               ),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              decoration: BoxDecoration(
-                color: Colors.amber.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.amber, width: 2),
-              ),
-              child: Text(
-                widget.task,
-                style: const TextStyle(
-                  color: Colors.amber,
-                  fontSize: 20,
+              const SizedBox(height: 24),
+              const Text(
+                'STREAK TASK',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
                   fontWeight: FontWeight.bold,
+                  letterSpacing: 2,
                 ),
-                textAlign: TextAlign.center,
               ),
-            ),
-            const SizedBox(height: 32),
-            const Text(
-              'Starting in 3...',
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 16,
+              const SizedBox(height: 16),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                decoration: BoxDecoration(
+                  color: Colors.amber.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.amber, width: 2),
+                ),
+                child: Text(
+                  widget.task,
+                  style: const TextStyle(
+                    color: Colors.amber,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 32),
+              Text(
+                displayText,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 48,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Tap will activate after countdown',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -354,51 +417,54 @@ class _StreakCompleteOverlayState extends State<_StreakCompleteOverlay> {
     return Material(
       color: Colors.black.withOpacity(0.85),
       child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.check_circle,
-              color: Colors.green,
-              size: 80,
-            ),
-            const SizedBox(height: 24),
-            const Text(
-              'STREAK COMPLETE!',
-              style: TextStyle(
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.check_circle,
                 color: Colors.green,
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 2,
+                size: 80,
               ),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              decoration: BoxDecoration(
-                color: Colors.green.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.green, width: 2),
-              ),
-              child: Text(
-                widget.task,
-                style: const TextStyle(
+              const SizedBox(height: 24),
+              const Text(
+                'STREAK COMPLETE!',
+                style: TextStyle(
                   color: Colors.green,
-                  fontSize: 18,
+                  fontSize: 28,
                   fontWeight: FontWeight.bold,
+                  letterSpacing: 2,
                 ),
-                textAlign: TextAlign.center,
               ),
-            ),
-            const SizedBox(height: 32),
-            const Text(
-              'Great job!',
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 16,
+              const SizedBox(height: 16),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.green, width: 2),
+                ),
+                child: Text(
+                  widget.task,
+                  style: const TextStyle(
+                    color: Colors.green,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 32),
+              const Text(
+                'Great job!',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flame/game.dart';
 import 'game/flappy_bird_game.dart';
 import 'screens/game_over_screen.dart';
-import 'screens/home_screen.dart';
+import 'screens/pause_screen.dart';
 
 class GameScreen extends StatefulWidget {
   const GameScreen({super.key});
@@ -25,11 +25,25 @@ class _GameScreenState extends State<GameScreen> {
     // ✅ Register GameOver overlay
     game.overlays.addEntry(
       'GameOver',
-          (context, gameRef) => GameOverUI(
+      (context, gameRef) => GameOverUI(
         game: gameRef as FlappyBirdGame,
         onHomePressed: _goToHome,
       ),
     );
+
+    // Register Pause button and menu overlay
+    game.overlays.addEntry(
+      'PauseButton',
+      (context, gameRef) => PauseButtonOverlay(game: gameRef as FlappyBirdGame),
+    );
+    game.overlays.addEntry(
+      'PauseMenu',
+      (context, gameRef) => PauseMenuOverlay(
+        game: gameRef as FlappyBirdGame,
+        onHomePressed: _goToHome,
+      ),
+    );
+    game.overlays.add('PauseButton');
   }
 
   void _goToHome() {
@@ -37,7 +51,7 @@ class _GameScreenState extends State<GameScreen> {
     game.pauseEngine();
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (context) => const HomeScreen()),
-          (route) => false,
+      (route) => false,
     );
   }
 

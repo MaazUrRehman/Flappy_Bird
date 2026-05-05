@@ -3,9 +3,10 @@ import 'package:flutter/rendering.dart';
 import 'package:flame/game.dart';
 import 'package:get/get.dart';
 
+import '../controllers/game_state_controller.dart';
 import '../game/flappy_bird_game.dart';
 import '../screens/game_over_screen.dart'; // Import GameOverUI
-import '../controllers/coin_controller.dart';
+import '../screens/pause_screen.dart';
 import 'shop/shop_screen.dart';
 import 'game/difficulty_screen.dart';
 import 'game/levels_screen.dart';
@@ -36,6 +37,22 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
 
+    // Register Pause button and menu overlay
+    game.overlays.addEntry(
+      'PauseButton',
+      (context, gameRef) => PauseButtonOverlay(game: gameRef as FlappyBirdGame),
+    );
+    game.overlays.addEntry(
+      'PauseMenu',
+      (context, gameRef) => PauseMenuOverlay(
+        game: gameRef as FlappyBirdGame,
+        onHomePressed: () {
+          Navigator.of(context).pop();
+        },
+      ),
+    );
+    game.overlays.add('PauseButton');
+
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -64,6 +81,22 @@ class _HomeScreenState extends State<HomeScreen> {
         },
       ),
     );
+
+    // Register Pause button and menu overlay
+    game.overlays.addEntry(
+      'PauseButton',
+      (context, gameRef) => PauseButtonOverlay(game: gameRef as FlappyBirdGame),
+    );
+    game.overlays.addEntry(
+      'PauseMenu',
+      (context, gameRef) => PauseMenuOverlay(
+        game: gameRef as FlappyBirdGame,
+        onHomePressed: () {
+          Navigator.of(context).pop();
+        },
+      ),
+    );
+    game.overlays.add('PauseButton');
 
     Navigator.push(
       context,
@@ -267,40 +300,36 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildCoinDisplay() {
-    return GetBuilder<CoinController>(
-      init: Get.find<CoinController>(),
-      builder: (controller) {
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.5),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: Colors.amber.withOpacity(0.5),
-              width: 1,
-            ),
+    final gameState = GameStateController.instance;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Colors.amber.withOpacity(0.5),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.monetization_on,
+            color: Colors.amber,
+            size: 24,
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.monetization_on,
-                color: Colors.amber,
-                size: 24,
-              ),
-              const SizedBox(width: 8),
-              Obx(() => Text(
-                    '${Get.find<CoinController>().totalCoins.value}',
-                    style: const TextStyle(
-                      color: Colors.amber,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  )),
-            ],
-          ),
-        );
-      },
+          const SizedBox(width: 8),
+          Obx(() => Text(
+                '${gameState.totalCoins.value}',
+                style: const TextStyle(
+                  color: Colors.amber,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              )),
+        ],
+      ),
     );
   }
 

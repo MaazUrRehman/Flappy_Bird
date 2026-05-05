@@ -72,7 +72,15 @@ class LevelController extends GetxController {
   }
 
   bool isStreakUnlocked(String difficulty, int level, int streak) {
-    return isLevelUnlocked(difficulty, level);
+    if (!isLevelUnlocked(difficulty, level)) {
+      return false;
+    }
+
+    if (streak == 1) {
+      return true;
+    }
+
+    return isStreakCompleted(difficulty, level, streak - 1);
   }
 
   bool isStreakCompleted(String difficulty, int level, int streak) {

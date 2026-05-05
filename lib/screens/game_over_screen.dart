@@ -40,40 +40,43 @@ class _GameOverUIState extends State<GameOverUI> {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.green, width: 3),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text(
-            "GAME OVER",
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              "GAME OVER",
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
             ),
-          ),
-          const SizedBox(height: 20),
-          _statRow("🪙", "COINS", widget.game.collectedCoins),
-          _divider(),
-          _statRow("⭐", "SCORE", widget.game.score),
-          _divider(),
-          _statRow("🚩", "DISTANCE", widget.game.distance.toInt()),
-          const SizedBox(height: 25),
+            const SizedBox(height: 20),
+            _statRow("🪙", "COINS", widget.game.collectedCoins),
+            _divider(),
+            _statRow("⭐", "SCORE", widget.game.score),
+            _divider(),
+            _statRow("🚩", "DISTANCE", widget.game.distance.toInt()),
+            const SizedBox(height: 25),
 
-          // Buttons Row (Exactly same as before - functionality preserved)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              // HOME button - Goes to Home Screen
-              _circleButton(Icons.home, Colors.green, _goHome),
+            // Buttons Row (Exactly same as before - functionality preserved)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                // HOME button - Goes to Home Screen
+                _circleButton(Icons.home, Colors.green, _goHome),
 
-              // RESTART button - Restarts game immediately
-              _circleButton(Icons.refresh, Colors.orange, _restart),
+                // RESTART button - Restarts game immediately
+                _circleButton(Icons.refresh, Colors.orange, _restart),
 
-              // CONTINUE button - Opens word guessing game
-              _circleButton(Icons.play_arrow, Colors.blue, _showWordGameModal),
-            ],
-          )
-        ],
+                // CONTINUE button - Opens word guessing game
+                _circleButton(
+                    Icons.play_arrow, Colors.blue, _showWordGameModal),
+              ],
+            )
+          ],
+        ),
       ),
     );
   }
