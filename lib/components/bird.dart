@@ -28,7 +28,7 @@
 //   // State
 //   bool isAlive = true;
 //   bool _isGameOverTriggered = false;
-  
+
 //   // Sprite management
 //   SpriteComponent? _birdSprite;
 //   bool _hasSprite = false;
@@ -42,10 +42,10 @@
 //   @override
 //   Future<void> onLoad() async {
 //     await super.onLoad();
-    
+
 //     // Load selected bird sprite
 //     await _loadBirdSprite();
-    
+
 //     // Listen for bird changes
 //     _listenToBirdChanges();
 
@@ -69,23 +69,23 @@
 //     try {
 //       final config = Get.find<GameConfigController>();
 //       final birdPath = config.getBirdAssetPath();
-      
+
 //       // Remove old sprite if exists
 //       if (_birdSprite != null && _birdSprite!.parent != null) {
 //         remove(_birdSprite!);
 //       }
-      
+
 //       // Load image from assets
 //       final image = await gameRef.images.load('assets/images/$birdPath');
-      
+
 //       // Create sprite
 //       final sprite = Sprite(image);
-      
+
 //       _birdSprite = SpriteComponent(
 //         sprite: sprite,
 //         size: size,
 //       );
-      
+
 //       print("🔥 Loading: $birdPath");
 
 //       add(_birdSprite!);
@@ -142,7 +142,7 @@
 
 //     // Tilt animation
 //     angle = (velocity / 350).clamp(-0.8, 0.8);
-    
+
 //     if (_birdSprite != null) {
 //       _birdSprite!.angle = angle;
 //     }
@@ -172,7 +172,7 @@
 
 //   void _updateSpriteVisibility() {
 //     final shouldBeVisible = isAlive && !gameRef.isGameOver;
-    
+
 //     if (_birdSprite != null) {
 //       if (shouldBeVisible && _birdSprite!.parent == null) {
 //         // Add sprite if it should be visible but isn't
@@ -230,7 +230,7 @@
 
 //   void revive() {
 //     print("🐦 Reviving bird...");
-    
+
 //     _isGameOverTriggered = false;
 //     isAlive = true;
 //     velocity = 0;
@@ -240,7 +240,7 @@
 //     _scalePulse = 0;
 //     angle = 0;
 //     scale.setValues(1.0, 1.0);
-    
+
 //     if (_birdSprite != null) {
 //       _birdSprite!.scale.setValues(1.0, 1.0);
 //       _birdSprite!.angle = 0;
@@ -249,7 +249,7 @@
 //         add(_birdSprite!);
 //       }
 //     }
-    
+
 //     print("✅ Bird revived and ready to fly!");
 //   }
 
@@ -264,15 +264,15 @@
 //       _renderFallbackBird(canvas);
 //     }
 //   }
-  
+
 //   void _renderFallbackBird(Canvas canvas) {
 //     // Get environment color adaptation
 //     final config = Get.find<GameConfigController>();
 //     final env = config.selectedEnvironment.value;
-    
+
 //     // Get bird color based on environment
 //     Color birdColor = _getBirdColorForEnvironment(env);
-    
+
 //     // Draw glow effect
 //     if (!gameRef.isGameOver && isAlive) {
 //       final glow = Paint()
@@ -407,7 +407,7 @@
 //     tailPath.close();
 //     canvas.drawPath(tailPath, tailPaint);
 //   }
-  
+
 //   Color _getBirdColorForEnvironment(EnvironmentType environment) {
 //     switch (environment) {
 //       case EnvironmentType.sunny:
@@ -423,30 +423,6 @@
 //     }
 //   }
 // }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 import 'dart:math';
 import 'package:flame/components.dart';
@@ -465,6 +441,8 @@ class Bird extends RectangleComponent
   double velocity = 0;
   double gravity = 900;
   double jumpForce = -320;
+  double maxFallSpeed = 520;
+  double maxRiseSpeed = -420;
 
   // Animation
   double _timeAlive = 0;
@@ -476,7 +454,7 @@ class Bird extends RectangleComponent
   // State
   bool isAlive = true;
   bool _isGameOverTriggered = false;
-  
+
   // Bird type
   BirdType birdType = BirdType.blue;
 
@@ -489,11 +467,11 @@ class Bird extends RectangleComponent
   @override
   Future<void> onLoad() async {
     await super.onLoad();
-    
+
     // Get selected bird type
     final config = Get.find<GameConfigController>();
     birdType = config.selectedBird.value;
-    
+
     // Listen for bird changes
     _listenToBirdChanges();
 
@@ -526,7 +504,8 @@ class Bird extends RectangleComponent
 
   void jump() {
     if (!gameRef.isGameOver && isAlive) {
-      velocity = jumpForce;
+      velocity = min(velocity, 0) + jumpForce;
+      velocity = velocity.clamp(maxRiseSpeed, maxFallSpeed).toDouble();
       _scalePulse = 0.3;
       _animateJump();
     }
@@ -549,12 +528,18 @@ class Bird extends RectangleComponent
       return;
     }
 
-    _timeAlive += dt;
-    velocity += gravity * dt;
-    position.y += velocity * dt;
+    final step = dt.clamp(0.0, 1 / 30).toDouble();
+    _timeAlive += step;
+
+    final previousVelocity = velocity;
+    velocity = (velocity + gravity * step)
+        .clamp(maxRiseSpeed, maxFallSpeed)
+        .toDouble();
+    position.y += ((previousVelocity + velocity) * 0.5) * step;
 
     // Tilt animation
-    angle = (velocity / 350).clamp(-0.8, 0.8);
+    final targetAngle = (velocity / maxFallSpeed).clamp(-0.55, 0.95);
+    angle += (targetAngle - angle) * min(1, step * 12);
 
     // Idle bobbing
     if (velocity.abs() < 50) {
@@ -592,6 +577,7 @@ class Bird extends RectangleComponent
   }
 
   void _triggerGameOver() {
+    if (gameRef.isReviveCountdownActive) return;
     if (!_isGameOverTriggered && isAlive && !gameRef.isGameOver) {
       _hitFlashIntensity = 1.0;
       _isGameOverTriggered = true;
@@ -615,8 +601,6 @@ class Bird extends RectangleComponent
   }
 
   void revive() {
-    print("🐦 Reviving bird...");
-    
     _isGameOverTriggered = false;
     isAlive = true;
     velocity = 0;
@@ -626,8 +610,6 @@ class Bird extends RectangleComponent
     _scalePulse = 0;
     angle = 0;
     scale.setValues(1.0, 1.0);
-    
-    print("✅ Bird revived and ready to fly!");
   }
 
   void reset() {
@@ -638,18 +620,16 @@ class Bird extends RectangleComponent
   void render(Canvas canvas) {
     _renderBird(canvas);
   }
-  
+
   void _renderBird(Canvas canvas) {
     // Get bird color based on bird type and environment
-    final config = Get.find<GameConfigController>();
-    final env = config.selectedEnvironment.value;
-    
     // Get main bird color
-    Color birdColor = _getBirdColor(birdType, env);
-    Color wingColor = _getWingColor(birdType, env);
-    Color bellyColor = _getBellyColor(birdType, env);
+    final skin = GameConfigController.skinFromType(birdType);
+    Color birdColor = skin.bodyColor;
+    Color wingColor = skin.wingColor;
+    Color bellyColor = skin.bellyColor;
     Color beakColor = _getBeakColor(birdType);
-    
+
     // Draw glow effect
     if (!gameRef.isGameOver && isAlive) {
       final glow = Paint()
@@ -676,24 +656,11 @@ class Bird extends RectangleComponent
       bodyPaint.color = birdColor;
     }
 
-    // Draw rounded body
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(0, 0, size.x, size.y),
-        const Radius.circular(20),
-      ),
-      bodyPaint,
-    );
+    _drawBody(canvas, skin, bodyPaint);
 
     // Draw belly
     final bellyPaint = Paint()..color = bellyColor;
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(5, 15, size.x - 10, size.y - 20),
-        const Radius.circular(10),
-      ),
-      bellyPaint,
-    );
+    _drawBelly(canvas, skin, bellyPaint);
 
     // Draw eye
     final eyePaint = Paint()..color = Colors.white;
@@ -729,26 +696,7 @@ class Bird extends RectangleComponent
     beakPath.close();
     canvas.drawPath(beakPath, beakPaint);
 
-    // Draw wing with flapping animation
-    final wingPaint = Paint()..color = wingColor;
-    final wingPath = Path();
-    double wingAngle = sin(_timeAlive * 15) * 0.8;
-
-    if (velocity > 0) {
-      // Falling - wings up
-      wingPath.moveTo(8, size.y * 0.5);
-      wingPath.quadraticBezierTo(
-          15 + wingAngle * 8, size.y * 0.25, 28, size.y * 0.45);
-    } else {
-      // Flapping - wings down
-      wingPath.moveTo(8, size.y * 0.5);
-      wingPath.quadraticBezierTo(
-          15 + wingAngle * 8, size.y * 0.75, 28, size.y * 0.55);
-    }
-    wingPath.lineTo(28, size.y * 0.65);
-    wingPath.lineTo(8, size.y * 0.6);
-    wingPath.close();
-    canvas.drawPath(wingPath, wingPaint);
+    _drawWing(canvas, skin, wingColor);
 
     // Draw cheek
     final cheekPaint = Paint()..color = Colors.red.withOpacity(0.5);
@@ -758,112 +706,214 @@ class Bird extends RectangleComponent
       cheekPaint,
     );
 
-    // Draw feathers on top
-    final featherPaint = Paint()..color = birdColor.withOpacity(0.8);
-    final featherPath = Path();
-    featherPath.moveTo(size.x * 0.3, 0);
-    featherPath.lineTo(size.x * 0.4, -8);
-    featherPath.lineTo(size.x * 0.5, 0);
-    featherPath.close();
-    canvas.drawPath(featherPath, featherPaint);
-
-    featherPath.reset();
-    featherPath.moveTo(size.x * 0.45, 0);
-    featherPath.lineTo(size.x * 0.55, -6);
-    featherPath.lineTo(size.x * 0.65, 0);
-    featherPath.close();
-    canvas.drawPath(featherPath, featherPaint);
+    _drawHeadAccent(canvas, skin);
 
     // Draw tail feathers
-    final tailPaint = Paint()..color = wingColor;
-    final tailPath = Path();
-    tailPath.moveTo(0, size.y * 0.6);
-    tailPath.lineTo(-12, size.y * 0.5);
-    tailPath.lineTo(-8, size.y * 0.6);
-    tailPath.lineTo(-14, size.y * 0.7);
-    tailPath.lineTo(-5, size.y * 0.75);
-    tailPath.lineTo(0, size.y * 0.7);
-    tailPath.close();
-    canvas.drawPath(tailPath, tailPaint);
-    
+    _drawTail(canvas, skin, wingColor);
+
     // Draw crown/crest for golden bird
-    if (birdType == BirdType.golden) {
-      final crownPaint = Paint()..color = const Color(0xFFFFD700);
-      final crownPath = Path();
-      crownPath.moveTo(size.x * 0.35, -5);
-      crownPath.lineTo(size.x * 0.4, -12);
-      crownPath.lineTo(size.x * 0.45, -5);
-      crownPath.lineTo(size.x * 0.5, -12);
-      crownPath.lineTo(size.x * 0.55, -5);
-      crownPath.close();
-      canvas.drawPath(crownPath, crownPaint);
+    _drawSpecialAccent(canvas, skin);
+  }
+
+  void _drawBody(Canvas canvas, BirdSkin skin, Paint paint) {
+    final rect = Rect.fromLTWH(0, 0, size.x, size.y);
+    switch (skin.shape) {
+      case BirdBodyShape.circle:
+        canvas.drawOval(Rect.fromLTWH(3, 0, size.y, size.y), paint);
+        break;
+      case BirdBodyShape.oval:
+        canvas.drawOval(rect, paint);
+        break;
+      case BirdBodyShape.triangle:
+        canvas.drawPath(
+          Path()
+            ..moveTo(2, size.y * 0.86)
+            ..quadraticBezierTo(size.x * 0.22, 2, size.x * 0.82, 2)
+            ..lineTo(size.x, size.y * 0.52)
+            ..quadraticBezierTo(size.x * 0.52, size.y, 2, size.y * 0.86)
+            ..close(),
+          paint,
+        );
+        break;
+      case BirdBodyShape.square:
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(rect.deflate(2), const Radius.circular(9)),
+          paint,
+        );
+        break;
+      case BirdBodyShape.diamond:
+        canvas.drawPath(
+          Path()
+            ..moveTo(size.x * 0.5, 0)
+            ..lineTo(size.x, size.y * 0.5)
+            ..lineTo(size.x * 0.5, size.y)
+            ..lineTo(0, size.y * 0.5)
+            ..close(),
+          paint,
+        );
+        break;
+      case BirdBodyShape.teardrop:
+        canvas.drawPath(
+          Path()
+            ..moveTo(size.x * 0.86, size.y * 0.48)
+            ..cubicTo(size.x * 0.72, -5, 8, 0, 6, size.y * 0.48)
+            ..cubicTo(4, size.y * 0.95, size.x * 0.6, size.y * 1.08,
+                size.x * 0.86, size.y * 0.48)
+            ..close(),
+          paint,
+        );
+        break;
+      case BirdBodyShape.rounded:
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(rect, const Radius.circular(20)),
+          paint,
+        );
+        break;
+    }
+
+    final shine = Paint()..color = Colors.white.withOpacity(0.13);
+    canvas.drawOval(Rect.fromLTWH(8, 5, size.x * 0.42, size.y * 0.28), shine);
+  }
+
+  void _drawBelly(Canvas canvas, BirdSkin skin, Paint paint) {
+    switch (skin.shape) {
+      case BirdBodyShape.triangle:
+      case BirdBodyShape.diamond:
+        canvas.drawOval(
+            Rect.fromLTWH(12, 18, size.x * 0.48, size.y * 0.38), paint);
+        break;
+      case BirdBodyShape.square:
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            Rect.fromLTWH(8, 16, size.x - 18, size.y - 22),
+            const Radius.circular(7),
+          ),
+          paint,
+        );
+        break;
+      default:
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            Rect.fromLTWH(6, 15, size.x - 14, size.y - 20),
+            const Radius.circular(14),
+          ),
+          paint,
+        );
     }
   }
-  
-  Color _getBirdColor(BirdType bird, EnvironmentType environment) {
-    // First priority: Bird type
-    switch (bird) {
-      case BirdType.blue:
-        return const Color(0xFF4A90E2);
-      case BirdType.red:
-        return const Color(0xFFE74C3C);
-      case BirdType.yellow:
-        return const Color(0xFFF1C40F);
-      case BirdType.green:
-        return const Color(0xFF2ECC71);
-      case BirdType.purple:
-        return const Color(0xFF8E44AD);
-      case BirdType.orange:
-        return const Color(0xFFE67E22);
-      case BirdType.pink:
-        return const Color(0xFFE91E63);
-      case BirdType.golden:
-        return const Color(0xFFFFD700);
+
+  void _drawWing(Canvas canvas, BirdSkin skin, Color wingColor) {
+    final wingPaint = Paint()..color = wingColor;
+    final wingPath = Path();
+    double wingAngle = sin(_timeAlive * 15) * 0.8;
+    final wingTop = velocity > 0 ? size.y * 0.25 : size.y * 0.75;
+
+    wingPath.moveTo(8, size.y * 0.5);
+    wingPath.quadraticBezierTo(15 + wingAngle * 8, wingTop, 29, size.y * 0.48);
+    wingPath.lineTo(28, size.y * 0.66);
+    wingPath.quadraticBezierTo(18, size.y * 0.72, 8, size.y * 0.6);
+    wingPath.close();
+    canvas.drawPath(wingPath, wingPaint);
+
+    canvas.drawLine(
+      Offset(12, size.y * 0.54),
+      Offset(27, size.y * 0.58),
+      Paint()
+        ..color = Colors.white.withOpacity(0.18)
+        ..strokeWidth = 2,
+    );
+  }
+
+  void _drawHeadAccent(Canvas canvas, BirdSkin skin) {
+    final featherPaint = Paint()..color = skin.accentColor.withOpacity(0.9);
+    if (skin.shape == BirdBodyShape.square || skin.type == BirdType.ninja) {
+      canvas.drawRect(
+          Rect.fromLTWH(size.x * 0.22, -3, size.x * 0.42, 5), featherPaint);
+      return;
+    }
+    final featherPath = Path()
+      ..moveTo(size.x * 0.3, 0)
+      ..lineTo(size.x * 0.4, -8)
+      ..lineTo(size.x * 0.5, 0)
+      ..close();
+    canvas.drawPath(featherPath, featherPaint);
+    featherPath
+      ..reset()
+      ..moveTo(size.x * 0.45, 0)
+      ..lineTo(size.x * 0.55, -6)
+      ..lineTo(size.x * 0.65, 0)
+      ..close();
+    canvas.drawPath(featherPath, featherPaint);
+  }
+
+  void _drawTail(Canvas canvas, BirdSkin skin, Color wingColor) {
+    final tailPaint = Paint()..color = wingColor;
+    final tailPath = Path()
+      ..moveTo(0, size.y * 0.6)
+      ..lineTo(-12, size.y * 0.48)
+      ..lineTo(-7, size.y * 0.62)
+      ..lineTo(-16, size.y * 0.72)
+      ..lineTo(-4, size.y * 0.76)
+      ..lineTo(0, size.y * 0.68)
+      ..close();
+    canvas.drawPath(tailPath, tailPaint);
+  }
+
+  void _drawSpecialAccent(Canvas canvas, BirdSkin skin) {
+    final accentPaint = Paint()..color = skin.accentColor;
+    if ([BirdType.golden, BirdType.royal].contains(skin.type)) {
+      final crownPath = Path()
+        ..moveTo(size.x * 0.35, -5)
+        ..lineTo(size.x * 0.4, -12)
+        ..lineTo(size.x * 0.45, -5)
+        ..lineTo(size.x * 0.5, -12)
+        ..lineTo(size.x * 0.55, -5)
+        ..close();
+      canvas.drawPath(crownPath, accentPaint);
+    } else if ([BirdType.demon, BirdType.magma].contains(skin.type)) {
+      canvas.drawPath(
+        Path()
+          ..moveTo(size.x * 0.28, 2)
+          ..lineTo(size.x * 0.18, -10)
+          ..lineTo(size.x * 0.38, -2)
+          ..close(),
+        accentPaint,
+      );
+      canvas.drawPath(
+        Path()
+          ..moveTo(size.x * 0.62, 2)
+          ..lineTo(size.x * 0.75, -10)
+          ..lineTo(size.x * 0.52, -2)
+          ..close(),
+        accentPaint,
+      );
+    } else if (skin.type == BirdType.angel) {
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: Offset(size.x * 0.48, -8),
+          width: 24,
+          height: 8,
+        ),
+        Paint()
+          ..color = skin.accentColor.withOpacity(0.8)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2,
+      );
+    } else if (skin.type == BirdType.thunder) {
+      canvas.drawPath(
+        Path()
+          ..moveTo(size.x * 0.45, 4)
+          ..lineTo(size.x * 0.3, 19)
+          ..lineTo(size.x * 0.43, 19)
+          ..lineTo(size.x * 0.34, 34)
+          ..lineTo(size.x * 0.6, 14)
+          ..lineTo(size.x * 0.46, 14)
+          ..close(),
+        accentPaint,
+      );
     }
   }
-  
-  Color _getWingColor(BirdType bird, EnvironmentType environment) {
-    switch (bird) {
-      case BirdType.blue:
-        return const Color(0xFF2C6FB7);
-      case BirdType.red:
-        return const Color(0xFFC0392B);
-      case BirdType.yellow:
-        return const Color(0xFFD4AC0D);
-      case BirdType.green:
-        return const Color(0xFF27AE60);
-      case BirdType.purple:
-        return const Color(0xFF6C3483);
-      case BirdType.orange:
-        return const Color(0xFFD35400);
-      case BirdType.pink:
-        return const Color(0xFFC2185B);
-      case BirdType.golden:
-        return const Color(0xFFF39C12);
-    }
-  }
-  
-  Color _getBellyColor(BirdType bird, EnvironmentType environment) {
-    switch (bird) {
-      case BirdType.blue:
-        return const Color(0xFF85C1E9);
-      case BirdType.red:
-        return const Color(0xFFF1948A);
-      case BirdType.yellow:
-        return const Color(0xFFF9E79F);
-      case BirdType.green:
-        return const Color(0xFF82E0AA);
-      case BirdType.purple:
-        return const Color(0xFFD2B4DE);
-      case BirdType.orange:
-        return const Color(0xFFF5B041);
-      case BirdType.pink:
-        return const Color(0xFFF8BBD0);
-      case BirdType.golden:
-        return const Color(0xFFF7DC6F);
-    }
-  }
-  
+
   Color _getBeakColor(BirdType bird) {
     return const Color(0xFFFF9800); // Orange beak for all birds
   }

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import '../game/flappy_bird_game.dart';
+import '../widgets/sound_tap.dart';
+import '../controllers/streak_controller.dart';
 
 class PauseButtonOverlay extends StatelessWidget {
   final FlappyBirdGame game;
@@ -39,105 +42,166 @@ class PauseButtonOverlay extends StatelessWidget {
   }
 }
 
-class PauseMenuOverlay extends StatelessWidget {
+class PauseMenuOverlay extends StatefulWidget {
   final FlappyBirdGame game;
   final VoidCallback onHomePressed;
 
   const PauseMenuOverlay(
       {super.key, required this.game, required this.onHomePressed});
 
-  Widget _buildStatRow(String label, String value) {
+  @override
+  State<PauseMenuOverlay> createState() => _PauseMenuOverlayState();
+}
+
+class _PauseMenuOverlayState extends State<PauseMenuOverlay>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animationController;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
+    );
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.black.withOpacity(0.6),
+      child: Center(
+        child: AnimatedBuilder(
+          animation: _scaleAnimation,
+          builder: (context, child) {
+            return Transform.scale(
+              scale: _scaleAnimation.value,
+              child: FadeTransition(
+                opacity: _scaleAnimation,
+                child: _buildModal(),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModal() {
+    return Container(
+      width: 300,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1A2E),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.green, width: 3),
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              "PAUSED",
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 20),
+            _statRow("🪙", "COINS", widget.game.collectedCoins),
+            _divider(),
+            _statRow("⭐", "SCORE", widget.game.score),
+            _divider(),
+            _statRow("🚩", "DISTANCE", widget.game.distance.toInt()),
+            const SizedBox(height: 25),
+            // Buttons Row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                // HOME button - Goes to Home Screen
+                _circleButton(Icons.home, Colors.green, _goHome),
+                // RESTART button - Restarts current streak
+                _circleButton(Icons.refresh, Colors.orange, _restartStreak),
+                // RESUME button - Resume gameplay
+                _circleButton(Icons.play_arrow, Colors.blue, _resume),
+              ],
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _statRow(String icon, String title, int value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 16,
-            ),
+          Row(
+            children: [
+              Text(icon, style: const TextStyle(fontSize: 22)),
+              const SizedBox(width: 10),
+              Text(title,
+                  style: const TextStyle(color: Colors.white, fontSize: 16)),
+            ],
           ),
           Text(
-            value,
+            "$value",
             style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
+              color: Colors.green,
+              fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
-          ),
+          )
         ],
       ),
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.black54,
-      child: Center(
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 24),
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: const Color(0xFF1A1A2E),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.white12),
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'Game Paused',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                _buildStatRow('Score', '${game.score}'),
-                _buildStatRow('Coins', '${game.collectedCoins}'),
-                _buildStatRow('Distance', '${game.distance.toInt()}m'),
-                const SizedBox(height: 20),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.redAccent,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                        ),
-                        onPressed: () {
-                          game.pauseGame();
-                          onHomePressed();
-                        },
-                        child: const Text('Home'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                        ),
-                        onPressed: () {
-                          game.overlays.remove('PauseMenu');
-                          game.reset();
-                        },
-                        child: const Text('Restart'),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
+  Widget _divider() => const Divider(color: Colors.white24, height: 1);
+
+  Widget _circleButton(IconData icon, Color color, VoidCallback onTap) {
+    return SoundTap(
+      onTap: onTap,
+      child: CircleAvatar(
+        radius: 28,
+        backgroundColor: color,
+        child: Icon(icon, color: Colors.white, size: 28),
       ),
     );
+  }
+
+  void _goHome() {
+    widget.game.overlays.remove('PauseMenu');
+    widget.game.pauseEngine();
+    widget.onHomePressed();
+  }
+
+  void _restartStreak() {
+    // Restart current streak - reset progress but keep streak active
+    final streakController = Get.find<StreakController>();
+    if (streakController.activeStreak.value != null) {
+      streakController.startStreak(streakController.activeStreak.value!);
+    }
+    widget.game.overlays.remove('PauseMenu');
+    widget.game.reset();
+  }
+
+  void _resume() {
+    widget.game.overlays.remove('PauseMenu');
+    widget.game.resumeGame();
   }
 }

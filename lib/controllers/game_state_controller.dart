@@ -1,6 +1,7 @@
+// ignore_for_file: avoid_print, duplicate_ignore
+
 import 'package:get/get.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-
 import 'level_controller.dart';
 
 /// GameStateController - Manages persistent game state including coins
@@ -107,9 +108,8 @@ class GameStateController extends GetxController {
       }
 
       await _ensureFreeShopItems();
-
-      print('GameStateController: Loaded ${totalCoins.value} coins');
     } catch (e) {
+      // ignore: avoid_print
       print('GameStateController: Error initializing storage: $e');
     }
   }
@@ -143,7 +143,9 @@ class GameStateController extends GetxController {
     try {
       final box = await Hive.openBox(_gameStateBox);
       await box.put(_coinsKey, totalCoins.value);
+      // ignore: duplicate_ignore
     } catch (e) {
+      // ignore: avoid_print
       print('GameStateController: Error saving coins: $e');
     }
   }
@@ -163,6 +165,7 @@ class GameStateController extends GetxController {
       final box = await Hive.openBox(_gameStateBox);
       await box.put(_highScoreKey, highScore.value);
     } catch (e) {
+      // ignore: avoid_print
       print('GameStateController: Error saving high score: $e');
     }
   }
@@ -196,9 +199,8 @@ class GameStateController extends GetxController {
     try {
       final box = await Hive.openBox(_gameStateBox);
       await box.put(_gamesPlayedKey, gamesPlayed.value);
-    // ignore: empty_catches
-    } catch (e) {
-    }
+      // ignore: empty_catches
+    } catch (e) {}
   }
 
   // ================= STREAK MANAGEMENT =================
@@ -328,7 +330,24 @@ class GameStateController extends GetxController {
 
   Future<void> _ensureFreeShopItems() async {
     const freeBirds = ['default', 'blue', 'red'];
-    const freeEnvironments = ['default', 'sunset'];
+    const freeEnvironments = [
+      'default',
+      'forest',
+      'sunset',
+      'cyber',
+      'arctic',
+      'desert',
+      'ocean',
+      'graveyard',
+      'candy',
+      'jungle',
+      'space',
+      'volcano',
+      'sakura',
+      'steampunk',
+      'heaven',
+      'nightmare',
+    ];
 
     var birdsChanged = false;
     for (final bird in freeBirds) {
@@ -408,6 +427,18 @@ class GameStateController extends GetxController {
     }
     currentUnlockedStreak.value = _streakKey(difficulty, level, streak + 1);
     await updateLevelProgress(difficulty, level, streak, score);
+    await _saveStreakProgress();
+  }
+
+  Future<void> resetLevelStreakRun(String difficulty, int level) async {
+    final prefix = '${difficulty}_${level}_';
+    completedStreaks.removeWhere((key) => key.startsWith(prefix));
+    currentUnlockedStreak.value = _streakKey(difficulty, level, 1);
+
+    if (Get.isRegistered<LevelController>()) {
+      await LevelController.instance.resetLevelStreaks(difficulty, level);
+    }
+
     await _saveStreakProgress();
   }
 

@@ -61,7 +61,8 @@ class LevelController extends GetxController {
   }
 
   bool isLevelUnlocked(String difficulty, int level) {
-    return level <= (unlockedLevels[difficulty] ?? 1);
+    return level <= LevelConfigGenerator.maxLevel &&
+        level <= (unlockedLevels[difficulty] ?? 1);
   }
 
   bool isLevelCompleted(String difficulty, int level) {
@@ -98,6 +99,12 @@ class LevelController extends GetxController {
     await _save();
   }
 
+  Future<void> resetLevelStreaks(String difficulty, int level) async {
+    final prefix = '${difficulty}_${level}_';
+    completedStreaks.removeWhere((key) => key.startsWith(prefix));
+    await _save();
+  }
+
   String streakKey(String difficulty, int level, int streak) {
     return '${difficulty}_${level}_$streak';
   }
@@ -122,12 +129,14 @@ class LevelController extends GetxController {
   void _recalculateUnlockedLevels() {
     for (final difficulty in const ['easy', 'medium', 'hard', 'extreme']) {
       var level = 1;
-      while (isLevelCompleted(difficulty, level)) {
+      while (level <= LevelConfigGenerator.maxLevel &&
+          isLevelCompleted(difficulty, level)) {
         level++;
       }
       final savedUnlocked = unlockedLevels[difficulty] ?? 1;
-      if (level > savedUnlocked) {
-        unlockedLevels[difficulty] = level;
+      final nextUnlocked = level.clamp(1, LevelConfigGenerator.maxLevel);
+      if (nextUnlocked > savedUnlocked) {
+        unlockedLevels[difficulty] = nextUnlocked;
       }
     }
   }

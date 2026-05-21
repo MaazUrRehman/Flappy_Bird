@@ -1,4 +1,4 @@
-import 'dart:ui';
+
 import 'dart:math';
 import 'package:flame/components.dart';
 import 'package:flame/collisions.dart';
@@ -26,6 +26,7 @@ class Coin extends CircleComponent
   // Coin details
   CoinType coinType;
   int coinValue;
+  @override
   double radius;
 
   // Particles
@@ -165,7 +166,7 @@ class Coin extends CircleComponent
         Color(0xFFDAA520),
         Color(0xFFB8860B),
       ],
-      stops: [0.0, 0.3, 0.7, 1.0],
+      stops: const [0.0, 0.3, 0.7, 1.0],
     ).createShader(Rect.fromCircle(
       center: Offset(position.x, position.y),
       radius: radius,
@@ -296,14 +297,13 @@ class Coin extends CircleComponent
   }
 
   @override
-  void onCollisionStart(Set<Vector2> points, PositionComponent other) {
-    super.onCollisionStart(points, other);
+  void onCollisionStart(Set<Vector2> intersectionPoints, PositionComponent other) {
+    super.onCollisionStart(intersectionPoints, other);
 
     if (other is Bird && !_isCollected) {
       _isCollected = true;
       // ✅ FIXED: Call addCoin instead of addScore
       gameRef.addCoin(coinValue);
-      print("💰 Coin collected! +$coinValue coin");
     }
   }
 }

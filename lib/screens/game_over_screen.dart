@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../game/flappy_bird_game.dart';
 import '../widgets/sound_tap.dart';
@@ -19,13 +21,24 @@ class GameOverUI extends StatefulWidget {
 
 class _GameOverUIState extends State<GameOverUI> {
   bool _showWordGame = false;
+  bool _showSolvedCountdown = false;
+  int _solvedCountdownValue = 3;
+  Timer? _solvedCountdownTimer;
+
+  @override
+  void dispose() {
+    _solvedCountdownTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Colors.black.withOpacity(0.6),
+      color: Colors.black.withOpacity(_showSolvedCountdown ? 0.25 : 0.6),
       child: Center(
-        child: _showWordGame ? _buildWordGameModal() : _buildMainUI(),
+        child: _showSolvedCountdown
+            ? _buildSolvedCountdown()
+            : (_showWordGame ? _buildWordGameModal() : _buildMainUI()),
       ),
     );
   }
@@ -90,6 +103,55 @@ class _GameOverUIState extends State<GameOverUI> {
     );
   }
 
+  Widget _buildSolvedCountdown() {
+    final displayText =
+        _solvedCountdownValue == 1 ? 'GET READY' : '$_solvedCountdownValue';
+
+    return Material(
+      color: Colors.transparent,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.check_circle,
+            color: Colors.greenAccent,
+            size: 72,
+          ),
+          const SizedBox(height: 18),
+          const Text(
+            'WORD SOLVED',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 34,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 28),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 250),
+            transitionBuilder: (child, animation) {
+              return ScaleTransition(scale: animation, child: child);
+            },
+            child: Text(
+              displayText,
+              key: ValueKey(displayText),
+              style: TextStyle(
+                color: _solvedCountdownValue == 1
+                    ? Colors.greenAccent
+                    : Colors.amber,
+                fontSize: _solvedCountdownValue == 1 ? 42 : 64,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ================= HELPER WIDGETS (SAME AS BEFORE) =================
   Widget _statRow(String icon, String title, int value) {
     return Padding(
@@ -135,6 +197,7 @@ class _GameOverUIState extends State<GameOverUI> {
 
   /// RESTART - Complete game restart (same as before)
   void _restart() {
+    _stopSolvedCountdown();
     widget.game.overlays.remove('GameOver');
     widget.game.resumeEngine();
     widget.game.reset();
@@ -142,6 +205,7 @@ class _GameOverUIState extends State<GameOverUI> {
 
   /// HOME - Navigate to home screen (same as before)
   void _goHome() {
+    _stopSolvedCountdown();
     widget.game.overlays.remove('GameOver');
     widget.game.pauseEngine();
     widget.onHomePressed();
@@ -163,8 +227,40 @@ class _GameOverUIState extends State<GameOverUI> {
 
   /// Successfully guessed word - Resume the flappy bird game
   void _onWordGameSuccess() {
+    _stopSolvedCountdown();
+    widget.game.reviveBird(enableUserControl: false);
+
+    setState(() {
+      _showWordGame = false;
+      _showSolvedCountdown = true;
+      _solvedCountdownValue = 3;
+    });
+
+    _solvedCountdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+
+      if (_solvedCountdownValue > 1) {
+        setState(() {
+          _solvedCountdownValue--;
+        });
+        return;
+      }
+
+      _finishSolvedCountdown();
+    });
+  }
+
+  void _finishSolvedCountdown() {
+    _stopSolvedCountdown();
+    widget.game.setUserControlEnabled(true);
     widget.game.overlays.remove('GameOver');
-    widget.game.resumeEngine();
-    widget.game.reviveBird(); // Your existing revive method
+  }
+
+  void _stopSolvedCountdown() {
+    _solvedCountdownTimer?.cancel();
+    _solvedCountdownTimer = null;
   }
 }

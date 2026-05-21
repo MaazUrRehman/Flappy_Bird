@@ -1,9 +1,14 @@
+// ignore_for_file: unused_import
+
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../game/flappy_bird_game.dart';
+import '../../controllers/game_state_controller.dart';
+import '../../controllers/streak_controller.dart';
 import '../../services/audio_manager.dart';
 import '../../widgets/sound_tap.dart';
+import '../game/streak_screen.dart';
 
 /// Word guessing game modal that appears when player wants to continue
 class WordGameModal extends StatefulWidget {
@@ -30,11 +35,13 @@ class _WordGameModalState extends State<WordGameModal> {
   String _message = '';
   bool _isMessageError = false;
   int _attemptsLeft = 3;
-  Set<String> _wrongGuesses = {};
+  final Set<String> _wrongGuesses = {};
 
   // Countdown state
   bool _showCountdown = false;
   int _countdown = 3;
+
+  bool _isNavigating = false;
 
   // Keyboard letter buttons
   final List<String> _letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
@@ -50,6 +57,49 @@ class _WordGameModalState extends State<WordGameModal> {
     _guessController.dispose();
     _focusNode.dispose();
     super.dispose();
+  }
+
+  Future<void> _navigateToStreaksPage() async {
+    if (_isNavigating) return;
+
+    _isNavigating = true;
+
+    await _resetFailedStreakRun();
+
+    // Close dialog safely
+    if (Get.isDialogOpen ?? false) {
+      Get.back();
+    }
+
+    Future.delayed(const Duration(milliseconds: 200), () {
+      if (mounted) {
+        Get.offAll(
+          () => StreakScreen(
+            difficulty: widget.game.difficulty,
+            level: widget.game.level,
+          ),
+        );
+      }
+    });
+  }
+
+  Future<void> _resetFailedStreakRun() async {
+    try {
+      await GameStateController.instance.resetLevelStreakRun(
+        widget.game.difficulty,
+        widget.game.level,
+      );
+    } catch (e) {
+      // Controller may not be available in tests.
+    }
+
+    try {
+      if (Get.isRegistered<StreakController>()) {
+        Get.find<StreakController>().failCurrentRun();
+      }
+    } catch (e) {
+      // SharedPreferences may not be ready in tests.
+    }
   }
 
   void _initializeNewGame() {
@@ -71,33 +121,14 @@ class _WordGameModalState extends State<WordGameModal> {
   }
 
   void _startCountdown() {
+    if (_showCountdown) return;
+
     setState(() {
       _showCountdown = true;
       _countdown = 3;
     });
 
-    // Start countdown timer
-    Future.delayed(const Duration(seconds: 1), () {
-      if (mounted && _showCountdown) {
-        setState(() {
-          _countdown = 2;
-        });
-        if (_countdown > 0) {
-          Future.delayed(const Duration(seconds: 1), () {
-            if (mounted && _showCountdown) {
-              setState(() {
-                _countdown = 1;
-              });
-              Future.delayed(const Duration(seconds: 1), () {
-                if (mounted && _showCountdown) {
-                  widget.onSuccess();
-                }
-              });
-            }
-          });
-        }
-      }
-    });
+    widget.onSuccess();
   }
 
   void _handleLetterGuess(String letter) {
@@ -138,9 +169,10 @@ class _WordGameModalState extends State<WordGameModal> {
         if (_attemptsLeft <= 0) {
           _message =
               'Game over! The word was "${_wordGame.originalWord.toUpperCase()}"';
+
           Future.delayed(const Duration(milliseconds: 1500), () {
             if (mounted) {
-              widget.onCancel();
+              _navigateToStreaksPage();
             }
           });
         }
@@ -175,9 +207,10 @@ class _WordGameModalState extends State<WordGameModal> {
           if (_attemptsLeft <= 0) {
             _message =
                 'Game over! The word was "${_wordGame.originalWord.toUpperCase()}"';
+
             Future.delayed(const Duration(milliseconds: 1500), () {
               if (mounted) {
-                widget.onCancel();
+                _navigateToStreaksPage();
               }
             });
           }
@@ -323,7 +356,10 @@ class _WordGameModalState extends State<WordGameModal> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Icon(Icons.games, color: Colors.amber, size: 24),
+              const SizedBox(
+                width: 48,
+                child: Icon(Icons.games, color: Colors.amber, size: 24),
+              ),
               Flexible(
                 child: Text(
                   "WORD CHALLENGE",
@@ -337,7 +373,17 @@ class _WordGameModalState extends State<WordGameModal> {
                   textAlign: TextAlign.center,
                 ),
               ),
-              const Icon(Icons.help, color: Colors.amber, size: 24),
+              SizedBox(
+                width: 48,
+                child: IconButton(
+                  tooltip: 'Back to game over',
+                  icon: const Icon(Icons.close, color: Colors.amber, size: 24),
+                  onPressed: () {
+                    playClickSound();
+                    widget.onCancel();
+                  },
+                ),
+              ),
             ],
           ),
         );
@@ -469,7 +515,7 @@ class _WordGameModalState extends State<WordGameModal> {
 
   Widget _buildVirtualKeyboard() {
     return Container(
-      constraints: BoxConstraints(
+      constraints: const BoxConstraints(
         maxHeight: 180, // Limit keyboard height
       ),
       padding: const EdgeInsets.all(4),

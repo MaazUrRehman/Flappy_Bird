@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_print
+
 import 'dart:math';
 import 'package:flame/components.dart';
 
@@ -21,12 +23,10 @@ class SpawnManager extends Component with HasGameRef<FlappyBirdGame> {
   bool _hasRandomPatterns = false;
 
   // Coin spawn tracking
-  int _coinsSpawnedThisWave = 0;
   int _waveCount = 0;
 
   // Special wave tracking
   bool _isSpecialWave = false;
-  int _wavesSinceLastSpecial = 0;
 
   // Store current pipe gap position for coin spawning
   double _currentGapY = 0;
@@ -46,8 +46,9 @@ class SpawnManager extends Component with HasGameRef<FlappyBirdGame> {
   void update(double dt) {
     super.update(dt);
 
-    if (gameRef.isGameOver || gameRef.isPaused || gameRef.isCountdownActive)
+    if (gameRef.isGameOver || gameRef.isPaused || gameRef.isCountdownActive) {
       return;
+    }
 
     spawnTimer += dt;
 
@@ -84,7 +85,6 @@ class SpawnManager extends Component with HasGameRef<FlappyBirdGame> {
       _spawnRandomCoinsInGap(minCoinY, maxCoinY);
     }
 
-    _wavesSinceLastSpecial++;
   }
 
   // ✅ NEW: Spawn random coins strictly inside gap
@@ -288,10 +288,8 @@ class SpawnManager extends Component with HasGameRef<FlappyBirdGame> {
     spawnInterval = 2.5;
     pipeSpeed = _basePipeSpeed;
     gap = _baseGap;
-    _coinsSpawnedThisWave = 0;
     _waveCount = 0;
     _isSpecialWave = false;
-    _wavesSinceLastSpecial = 0;
     _currentGapY = 0;
     _currentGapSize = _baseGap;
   }

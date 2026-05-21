@@ -1,3 +1,5 @@
+// ignore_for_file: unused_field, avoid_print, unnecessary_overrides, division_optimization
+
 import 'dart:math';
 
 import 'package:flame/camera.dart';
@@ -36,6 +38,7 @@ class FlappyBirdGame extends FlameGame with TapDetector, HasCollisionDetection {
   bool _isGameReady = false;
   bool _isCountdownActive = false;
   bool _isUserControlEnabled = true;
+  bool _isReviveCountdownActive = false;
   bool _countdownPending = false;
 
   int _collectedCoins = 0;
@@ -72,9 +75,13 @@ class FlappyBirdGame extends FlameGame with TapDetector, HasCollisionDetection {
   int get streak => _streak;
   bool get isStreakMode => _isStreakMode;
   String get currentTask => _currentTask;
+  String get currentTaskType => _currentTaskType;
   int get taskProgress => _taskProgress;
   int get taskTarget => _taskTarget;
   bool get taskCompleted => _taskCompleted;
+  bool get isTimerTask =>
+      _isStreakMode && _currentTaskType == 'time' && !_taskCompleted;
+  int get remainingTaskSeconds => max(0, _taskTarget - _taskProgress);
 
   /// Set game mode for streak-based gameplay
   void setGameMode({
@@ -117,6 +124,7 @@ class FlappyBirdGame extends FlameGame with TapDetector, HasCollisionDetection {
 
   bool get isCountdownActive => _isCountdownActive;
   bool get isUserControlEnabled => _isUserControlEnabled;
+  bool get isReviveCountdownActive => _isReviveCountdownActive;
 
   /// Prepare the game for the pre-start countdown sequence.
   void prepareStartCountdown() {
@@ -167,9 +175,9 @@ class FlappyBirdGame extends FlameGame with TapDetector, HasCollisionDetection {
   void _setStreakTask(int streak) {
     final tasks = [
       {
-        'task': 'Collect ${_difficultyConfig.coinTarget} coins',
-        'target': _difficultyConfig.coinTarget,
-        'type': 'coins',
+        'task': 'Travel ${_difficultyConfig.distanceTarget}m distance',
+        'target': _difficultyConfig.distanceTarget,
+        'type': 'distance',
       },
       {
         'task': 'Reach score ${_difficultyConfig.targetScore}',
@@ -177,24 +185,19 @@ class FlappyBirdGame extends FlameGame with TapDetector, HasCollisionDetection {
         'type': 'score',
       },
       {
-        'task': 'Travel ${_difficultyConfig.distanceTarget}m distance',
-        'target': _difficultyConfig.distanceTarget,
-        'type': 'distance',
-      },
-      {
-        'task': 'Pass ${(_difficultyConfig.targetScore / 5).ceil()} pipes',
-        'target': (_difficultyConfig.targetScore / 5).ceil(),
-        'type': 'pipes',
-      },
-      {
         'task': 'Survive ${_difficultyConfig.survivalTime} seconds',
         'target': _difficultyConfig.survivalTime,
         'type': 'time',
       },
       {
-        'task': 'Collect ${_difficultyConfig.coinTarget + 3} coins',
-        'target': _difficultyConfig.coinTarget + 3,
+        'task': 'Collect ${_difficultyConfig.coinTarget} coins',
+        'target': _difficultyConfig.coinTarget,
         'type': 'coins',
+      },
+      {
+        'task': 'Pass ${(_difficultyConfig.targetScore / 5).ceil()} pipes',
+        'target': (_difficultyConfig.targetScore / 5).ceil(),
+        'type': 'pipes',
       },
       {
         'task': 'Reach score ${_difficultyConfig.targetScore + 10}',
@@ -215,6 +218,10 @@ class FlappyBirdGame extends FlameGame with TapDetector, HasCollisionDetection {
 
 // Track pipes passed for streak tasks
   int _pipesPassed = 0;
+  int _flapsMade = 0;
+  int _coinScore = 0;
+  int _pipeScore = 0;
+  double _survivalSeconds = 0;
 
   /// Update task progress based on game events
   void updateTaskProgress(String type, int amount) {
@@ -230,7 +237,13 @@ class FlappyBirdGame extends FlameGame with TapDetector, HasCollisionDetection {
     } else if (type == 'pipes') {
       _taskProgress = _pipesPassed;
     } else if (type == 'time') {
-      _taskProgress = (_distance / 100).toInt(); // Approximate time
+      _taskProgress = _survivalSeconds.floor();
+    } else if (type == 'flaps') {
+      _taskProgress = _flapsMade;
+    } else if (type == 'coinScore') {
+      _taskProgress = _coinScore;
+    } else if (type == 'pipeScore') {
+      _taskProgress = _pipeScore;
     }
 
     if (_taskProgress >= _taskTarget && !_taskCompleted) {
@@ -300,6 +313,11 @@ class FlappyBirdGame extends FlameGame with TapDetector, HasCollisionDetection {
     _taskProgress = 0;
     _taskTarget = 0;
     _taskCompleted = false;
+    _pipesPassed = 0;
+    _flapsMade = 0;
+    _coinScore = 0;
+    _pipeScore = 0;
+    _survivalSeconds = 0;
   }
 
   // Visual effects
@@ -356,7 +374,7 @@ class FlappyBirdGame extends FlameGame with TapDetector, HasCollisionDetection {
 
     // Add background first
     add(Background());
-    add(Ground());
+    // Ground removed from all environment visuals
 
     // Create bird
     bird = Bird();
@@ -419,13 +437,15 @@ class FlappyBirdGame extends FlameGame with TapDetector, HasCollisionDetection {
       return;
     }
 
-    if (isPaused) {
+    if (isPaused || !_isUserControlEnabled) {
       return;
     }
 
     // ✅ Check if bird is initialized before accessing
     if (bird.isAlive) {
       bird.jump();
+      _flapsMade++;
+      updateTaskProgress('flaps', _flapsMade);
       try {
         AudioManager.instance.playJumpSound();
       } catch (e) {
@@ -610,6 +630,8 @@ class FlappyBirdGame extends FlameGame with TapDetector, HasCollisionDetection {
 
     isGameOver = true;
     _isTransitioning = true;
+    _isUserControlEnabled = true;
+    _isReviveCountdownActive = false;
     bird.isAlive = false;
 
     final finalScore = scoreManager.score;
@@ -655,6 +677,7 @@ class FlappyBirdGame extends FlameGame with TapDetector, HasCollisionDetection {
       _hud.notifyCoinCollected();
       scoreManager.increaseScore(points: value);
       _hud.notifyScoreIncrease(value);
+      _coinScore += value;
 
       // ✅ Add to global coin total via shared GameStateController
       GameStateController.instance.addGameCoins(value);
@@ -668,6 +691,7 @@ class FlappyBirdGame extends FlameGame with TapDetector, HasCollisionDetection {
 
       // Update task progress for streak mode
       updateTaskProgress('coins', _collectedCoins);
+      updateTaskProgress('coinScore', _coinScore);
       updateTaskProgress('score', scoreManager.score);
 
       print("💰 Coin! +$value | Total: $_collectedCoins");
@@ -686,6 +710,8 @@ class FlappyBirdGame extends FlameGame with TapDetector, HasCollisionDetection {
     if (!isGameOver && !isPaused) {
       scoreManager.increaseScore(points: 5);
       _hud.notifyScoreIncrease(5);
+      _pipeScore += 5;
+      updateTaskProgress('pipeScore', _pipeScore);
       updateTaskProgress('score', scoreManager.score);
     }
   }
@@ -696,7 +722,20 @@ class FlappyBirdGame extends FlameGame with TapDetector, HasCollisionDetection {
     }
   }
 
-  void reviveBird() {
+  void setUserControlEnabled(bool enabled) {
+    _isUserControlEnabled = enabled;
+    if (enabled) {
+      _isReviveCountdownActive = false;
+    }
+  }
+
+  void autoFlyBird() {
+    if (!isGameOver && !isPaused && bird.isAlive) {
+      bird.jump();
+    }
+  }
+
+  void reviveBird({bool enableUserControl = true}) {
     if (isGameOver) {
       print("🕊️ Reviving bird...");
 
@@ -704,6 +743,8 @@ class FlappyBirdGame extends FlameGame with TapDetector, HasCollisionDetection {
       isGameOver = false;
       _isTransitioning = false;
       _isGameReady = true; // ✅ Reset game ready flag
+      _isUserControlEnabled = enableUserControl;
+      _isReviveCountdownActive = !enableUserControl;
 
       // ✅ Call bird's revive method
       bird.revive(); // Use the new revive method
@@ -721,8 +762,15 @@ class FlappyBirdGame extends FlameGame with TapDetector, HasCollisionDetection {
     _isTransitioning = true;
     isGameOver = false;
     isPaused = false;
+    _isUserControlEnabled = true;
+    _isReviveCountdownActive = false;
     _collectedCoins = 0;
     _distance = 0;
+    _pipesPassed = 0;
+    _flapsMade = 0;
+    _coinScore = 0;
+    _pipeScore = 0;
+    _survivalSeconds = 0;
 
     // ✅ Temporarily disable game ready flag during reset
     _isGameReady = false;
@@ -788,9 +836,10 @@ class FlappyBirdGame extends FlameGame with TapDetector, HasCollisionDetection {
         !_isCountdownActive &&
         bird.isAlive) {
       _distance += 100 * dt;
+      _survivalSeconds += dt;
       _applyHitStop(dt);
       updateTaskProgress('distance', _distance.toInt());
-      updateTaskProgress('time', (_distance / 100).toInt());
+      updateTaskProgress('time', _survivalSeconds.floor());
     }
 
     _applyScreenShake(dt);

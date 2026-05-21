@@ -1,8 +1,6 @@
-
-
+// ignore_for_file: unnecessary_null_comparison
 
 import 'dart:math';
-import 'dart:ui';
 import 'package:flame/components.dart';
 import 'package:flutter/material.dart';
 
@@ -13,17 +11,15 @@ class DistanceManager extends TextComponent {
 
   // Visual enhancements
   late Paint _backgroundPaint;
-  late Paint _shadowPaint;
   late Paint _glowPaint;
 
   // Animation properties
   double _pulseIntensity = 0;
   double _time = 0;
-  double _scale = 1.0;
 
   // Distance milestones
   int _lastMilestone = 0;
-  List<int> _milestones = [100, 250, 500, 1000, 2500, 5000];
+  final List<int> _milestones = [100, 250, 500, 1000, 2500, 5000];
 
   // Unit system
   DistanceUnit _unit = DistanceUnit.meters;
@@ -98,12 +94,9 @@ class DistanceManager extends TextComponent {
           Color(0xFF1A1A2E),
           Color(0xFF16213E),
         ],
-      ).createShader(Rect.fromLTWH(0, 0, 180, 40));
+      ).createShader(const Rect.fromLTWH(0, 0, 180, 40));
 
     // Shadow for text
-    _shadowPaint = Paint()
-      ..color = Colors.black.withOpacity(0.3)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
 
     // Glow effect
     _glowPaint = Paint()
@@ -119,10 +112,6 @@ class DistanceManager extends TextComponent {
     );
 
     // Add border to panel
-    final borderPaint = Paint()
-      ..color = Colors.cyan.withOpacity(0.5)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
 
     _backgroundPanel.paint = _backgroundPaint;
     add(_backgroundPanel);
@@ -162,7 +151,7 @@ class DistanceManager extends TextComponent {
     String medalEmoji = _getMedalEmoji();
     String medalSpace = medalEmoji.isEmpty ? '' : ' ';
 
-    return '📏 DISTANCE${medalSpace}${medalEmoji}: ${displayDistance.toStringAsFixed(displayDistance > 1000 ? 0 : 1)} $unitText';
+    return '📏 DISTANCE$medalSpace$medalEmoji: ${displayDistance.toStringAsFixed(displayDistance > 1000 ? 0 : 1)} $unitText';
   }
 
   String _getMedalEmoji() {
@@ -216,10 +205,6 @@ class DistanceManager extends TextComponent {
       _currentColor = const Color(0xFFCD7F32); // Bronze
     }
 
-    // Could play sound effect
-    // gameRef.audioManager.playMilestoneSound();
-
-    print("🎉 Milestone reached: ${milestone}m!");
   }
 
   void _updateTextStyle() {

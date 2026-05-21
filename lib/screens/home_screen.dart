@@ -1,8 +1,8 @@
+// ignore_for_file: unused_element
+
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flame/game.dart';
 import 'package:get/get.dart';
-
 import '../controllers/game_state_controller.dart';
 import '../game/flappy_bird_game.dart';
 import '../screens/game_over_screen.dart'; // Import GameOverUI
@@ -227,7 +227,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     context,
                                     MaterialPageRoute(
                                       builder: (context) =>
-                                          LevelsScreen(difficulty: 'easy'),
+                                          const LevelsScreen(difficulty: 'easy'),
                                     ),
                                   );
                                 },
@@ -242,7 +242,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     context,
                                     MaterialPageRoute(
                                       builder: (context) =>
-                                          LevelsScreen(difficulty: 'medium'),
+                                          const LevelsScreen(difficulty: 'medium'),
                                     ),
                                   );
                                 },
@@ -257,7 +257,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     context,
                                     MaterialPageRoute(
                                       builder: (context) =>
-                                          LevelsScreen(difficulty: 'hard'),
+                                          const LevelsScreen(difficulty: 'hard'),
                                     ),
                                   );
                                 },
@@ -272,7 +272,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     context,
                                     MaterialPageRoute(
                                       builder: (context) =>
-                                          LevelsScreen(difficulty: 'extreme'),
+                                          const LevelsScreen(difficulty: 'extreme'),
                                     ),
                                   );
                                 },

@@ -1,15 +1,18 @@
+// ignore_for_file: unused_import, unnecessary_null_comparison
+
 import 'dart:math';
 import 'package:flame/components.dart';
 import 'package:flame/collisions.dart';
 import 'package:flutter/material.dart';
 import '../game/flappy_bird_game.dart';
 import 'bird.dart';
+import '../models/environment_theme.dart';
 
-class Pipe extends RectangleComponent with CollisionCallbacks, HasGameRef<FlappyBirdGame> {
-
+class Pipe extends RectangleComponent
+    with CollisionCallbacks, HasGameRef<FlappyBirdGame> {
   double speed = 200;
   PipeType pipeType;
-  bool _scoreGiven = false;  // ✅ Track if score already given for this pipe
+  bool _scoreGiven = false; // ✅ Track if score already given for this pipe
   bool _isMoving = false;
   double _movePhase = 0;
   double _baseY = 0;
@@ -37,21 +40,22 @@ class Pipe extends RectangleComponent with CollisionCallbacks, HasGameRef<Flappy
   final Color pipeColor;
   final Color rimColor;
   final Color darkColor;
+  final EnvironmentTheme envTheme;
 
   Pipe({
     required Vector2 position,
     required Vector2 size,
     this.pipeType = PipeType.top,
     Color? customColor,
-  }) :
-        pipeColor = customColor ?? const Color(0xFF2E7D32),
-        rimColor = const Color(0xFF1B5E20),
-        darkColor = const Color(0xFF0D3B0F),
+  })  : envTheme = EnvironmentTheme.current(),
+        pipeColor = customColor ?? EnvironmentTheme.current().pipeBase,
+        rimColor = EnvironmentTheme.current().pipeRim,
+        darkColor = EnvironmentTheme.current().groundBottom,
         super(
-        position: position,
-        size: size,
-        paint: Paint(),
-      );
+          position: position,
+          size: size,
+          paint: Paint(),
+        );
 
   @override
   Future<void> onLoad() async {
@@ -157,7 +161,7 @@ class Pipe extends RectangleComponent with CollisionCallbacks, HasGameRef<Flappy
         y: random.nextDouble() * size.y,
         size: 5 + random.nextDouble() * 8,
         angle: random.nextDouble() * pi * 2,
-        color: const Color(0xFF4CAF50),
+        color: envTheme.accent,
       ));
     }
 
@@ -199,13 +203,11 @@ class Pipe extends RectangleComponent with CollisionCallbacks, HasGameRef<Flappy
         pipeType == PipeType.bottom &&
         gameRef.bird != null &&
         gameRef.bird.isAlive) {
-
       if (position.x + size.x < gameRef.bird.position.x) {
         _scoreGiven = true;
         // +5 score for passing pipe
         gameRef.addScore(5);
         gameRef.incrementPipesPassed();
-        print("✅ Pipe passed! +5 points. Total: ${gameRef.score}");
       }
     }
 
@@ -260,18 +262,6 @@ class Pipe extends RectangleComponent with CollisionCallbacks, HasGameRef<Flappy
 
     // Draw highlight (light reflection)
     _renderHighlight(canvas);
-
-    // ✅ Debug: Show score boundary (optional - remove in production)
-    if (pipeType == PipeType.bottom && _scoreGiven == false) {
-      final debugPaint = Paint()
-        ..color = Colors.red.withOpacity(0.3)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2;
-      canvas.drawRect(
-        Rect.fromLTWH(0, 0, size.x, size.y),
-        debugPaint,
-      );
-    }
   }
 
   void _updateGradients() {
@@ -304,37 +294,133 @@ class Pipe extends RectangleComponent with CollisionCallbacks, HasGameRef<Flappy
 
   void _renderPipeTexture(Canvas canvas) {
     final linePaint = Paint()
-      ..color = Colors.black.withOpacity(0.15)
+      ..color = Colors.black.withOpacity(0.18)
       ..strokeWidth = 2;
 
-    // Horizontal bands (pipe segments)
-    for (double y = 20; y < size.y; y += 25) {
-      canvas.drawLine(
-        Offset(0, y),
-        Offset(size.x, y),
-        linePaint,
-      );
-    }
-
-    // Vertical line (pipe seam)
-    canvas.drawLine(
-      Offset(size.x / 2, 0),
-      Offset(size.x / 2, size.y),
-      linePaint,
-    );
-
-    // Bolt/rivet details
-    final boltPaint = Paint()..color = Colors.black.withOpacity(0.25);
-    for (double y = 15; y < size.y; y += 25) {
-      canvas.drawCircle(Offset(size.x / 4, y), 3, boltPaint);
-      canvas.drawCircle(Offset(size.x * 3 / 4, y), 3, boltPaint);
+    switch (envTheme.id) {
+      case 'forest':
+      case 'jungle':
+        for (double x = 8; x < size.x; x += 14) {
+          canvas.drawLine(
+            Offset(x, 0),
+            Offset(x + sin(_time + x) * 6, size.y),
+            linePaint,
+          );
+        }
+        for (double y = 22; y < size.y; y += 48) {
+          canvas.drawOval(
+            Rect.fromLTWH(size.x * 0.2, y, size.x * 0.56, 16),
+            Paint()..color = darkColor.withOpacity(0.28),
+          );
+        }
+        break;
+      case 'cyber':
+      case 'space':
+        for (double y = 18; y < size.y; y += 34) {
+          canvas.drawRect(Rect.fromLTWH(0, y, size.x, 3), linePaint);
+          canvas.drawRect(
+            Rect.fromLTWH(8, y + 8, size.x - 16, 3),
+            Paint()
+              ..color =
+                  envTheme.accent.withOpacity(0.55 + sin(_time * 5 + y) * 0.18),
+          );
+        }
+        break;
+      case 'arctic':
+        for (double y = 16; y < size.y; y += 46) {
+          canvas.drawLine(
+            Offset(8, y),
+            Offset(size.x - 8, y + 22),
+            Paint()
+              ..color = Colors.white.withOpacity(0.38)
+              ..strokeWidth = 1.5,
+          );
+        }
+        break;
+      case 'desert':
+      case 'sunset':
+      case 'graveyard':
+      case 'heaven':
+        for (double y = 22; y < size.y; y += 32) {
+          canvas.drawLine(Offset(0, y), Offset(size.x, y), linePaint);
+        }
+        for (double y = 36; y < size.y; y += 64) {
+          canvas.drawRect(
+            Rect.fromLTWH(9, y, size.x - 18, 10),
+            Paint()..color = envTheme.accent.withOpacity(0.18),
+          );
+        }
+        break;
+      case 'ocean':
+        for (double y = 20; y < size.y; y += 42) {
+          canvas.drawCircle(
+            Offset(size.x * 0.28, y),
+            5,
+            Paint()..color = envTheme.accent.withOpacity(0.45),
+          );
+          canvas.drawCircle(
+            Offset(size.x * 0.7, y + 16),
+            4,
+            Paint()..color = Colors.white.withOpacity(0.22),
+          );
+        }
+        break;
+      case 'candy':
+        for (double y = -size.x; y < size.y; y += 26) {
+          canvas.drawLine(
+            Offset(0, y),
+            Offset(size.x, y + size.x),
+            Paint()
+              ..color = envTheme.accent.withOpacity(0.45)
+              ..strokeWidth = 7,
+          );
+        }
+        break;
+      case 'volcano':
+      case 'nightmare':
+        for (double y = 28; y < size.y; y += 52) {
+          final crack = Path()
+            ..moveTo(size.x * 0.46, y)
+            ..lineTo(size.x * 0.58, y + 15)
+            ..lineTo(size.x * 0.42, y + 34);
+          canvas.drawPath(
+            crack,
+            Paint()
+              ..color = envTheme.accent.withOpacity(0.7)
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 3,
+          );
+        }
+        break;
+      case 'sakura':
+        for (double y = 20; y < size.y; y += 36) {
+          canvas.drawLine(Offset(0, y), Offset(size.x, y), linePaint);
+          canvas.drawCircle(
+            Offset(size.x * 0.74, y + 8),
+            5,
+            Paint()..color = envTheme.accent.withOpacity(0.7),
+          );
+        }
+        break;
+      case 'steampunk':
+        final boltPaint = Paint()..color = envTheme.accent.withOpacity(0.55);
+        for (double y = 18; y < size.y; y += 30) {
+          canvas.drawLine(Offset(0, y), Offset(size.x, y), linePaint);
+          canvas.drawCircle(Offset(size.x / 4, y + 7), 3, boltPaint);
+          canvas.drawCircle(Offset(size.x * 3 / 4, y + 7), 3, boltPaint);
+        }
+        break;
+      default:
+        for (double y = 20; y < size.y; y += 25) {
+          canvas.drawLine(Offset(0, y), Offset(size.x, y), linePaint);
+        }
     }
   }
 
   void _renderMossSpots(Canvas canvas) {
     for (var moss in _mossSpots) {
       final paint = Paint()
-        ..color = const Color(0xFF558B2F).withOpacity(moss.opacity)
+        ..color = envTheme.accent.withOpacity(moss.opacity)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
 
       canvas.drawCircle(
@@ -393,8 +479,7 @@ class Pipe extends RectangleComponent with CollisionCallbacks, HasGameRef<Flappy
     );
 
     // Rim highlight
-    final highlightPaint = Paint()
-      ..color = Colors.white.withOpacity(0.2);
+    final highlightPaint = Paint()..color = Colors.white.withOpacity(0.2);
 
     canvas.drawRect(
       Rect.fromLTWH(-5, rimY, size.x + 10, 2),
@@ -417,7 +502,7 @@ class Pipe extends RectangleComponent with CollisionCallbacks, HasGameRef<Flappy
 
   void _renderGlowEffect(Canvas canvas) {
     final glowPaint = Paint()
-      ..color = const Color(0xFFFFD700).withOpacity(0.3 * _glowIntensity)
+      ..color = envTheme.accent.withOpacity(0.3 * _glowIntensity)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 15);
 
     canvas.drawRRect(
@@ -430,8 +515,7 @@ class Pipe extends RectangleComponent with CollisionCallbacks, HasGameRef<Flappy
   }
 
   void _renderHighlight(Canvas canvas) {
-    final highlightPaint = Paint()
-      ..color = Colors.white.withOpacity(0.15);
+    final highlightPaint = Paint()..color = Colors.white.withOpacity(0.15);
 
     canvas.drawRect(
       Rect.fromLTWH(5, 5, size.x * 0.15, size.y - 10),
@@ -460,7 +544,8 @@ extension ColorExtension on Color {
   Color lighten(double amount) {
     assert(amount >= 0 && amount <= 1);
     final hsl = HSLColor.fromColor(this);
-    final hslLight = hsl.withLightness((hsl.lightness + amount).clamp(0.0, 1.0));
+    final hslLight =
+        hsl.withLightness((hsl.lightness + amount).clamp(0.0, 1.0));
     return hslLight.toColor();
   }
 

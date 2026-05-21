@@ -1,9 +1,12 @@
+// ignore_for_file: unused_field
+
 import 'dart:math';
 import 'package:flame/components.dart';
 import 'package:flutter/material.dart';
 
-class Ground extends RectangleComponent with HasGameRef {
+import '../models/environment_theme.dart';
 
+class Ground extends RectangleComponent with HasGameRef {
   late RectangleComponent _dirtLayer;
   late RectangleComponent _detailLayer;
 
@@ -14,15 +17,16 @@ class Ground extends RectangleComponent with HasGameRef {
 
   final List<GroundDetail> _details = [];
   final List<SmallStone> _stones = [];
-  final List<GrassBlade> _grassBlades = [];  // Realistic grass
+  final List<GrassBlade> _grassBlades = []; // Realistic grass
 
   double _time = 0;
   bool _isRaining = false;
 
-  Ground() : super(
-    size: Vector2(1000, 65),
-    paint: Paint()..color = Colors.transparent,
-  ){
+  Ground()
+      : super(
+          size: Vector2(1000, 65),
+          paint: Paint()..color = Colors.transparent,
+        ) {
     priority = 2;
   }
 
@@ -108,7 +112,8 @@ class Ground extends RectangleComponent with HasGameRef {
       const Color(0xFF8D6E63),
       const Color(0xFF7B5B4A),
     ];
-    return colors[random.nextInt(colors.length)].withOpacity(0.5 + random.nextDouble() * 0.4);
+    return colors[random.nextInt(colors.length)]
+        .withOpacity(0.5 + random.nextDouble() * 0.4);
   }
 
   Color _getRandomStoneColor(Random random) {
@@ -161,26 +166,31 @@ class Ground extends RectangleComponent with HasGameRef {
 
   @override
   void render(Canvas canvas) {
-    _renderDirtLayer(canvas);
+    final theme = EnvironmentTheme.current();
+    _renderDirtLayer(canvas, theme);
     _renderDetails(canvas);
-    _renderStones(canvas);
-    _renderGrassBlades(canvas);  // Realistic grass on top
-    _renderTopEdgeShadow(canvas);
+    _renderStones(canvas, theme);
+    _renderThemeForeground(canvas, theme);
+    _renderGrassBlades(canvas, theme); // Realistic grass on top
+    _renderTopEdgeShadow(canvas, theme);
 
     if (_isRaining) {
       _renderRainEffect(canvas);
     }
   }
 
-  void _renderDirtLayer(Canvas canvas) {
+  void _renderDirtLayer(Canvas canvas, EnvironmentTheme theme) {
     // Base brown color
-    canvas.drawRect(
-      Rect.fromLTWH(0, 0, size.x, size.y),
-      Paint()..color = const Color(0xFF8B5A2B),
-    );
+    final basePaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [theme.groundTop, theme.groundBottom],
+      ).createShader(Rect.fromLTWH(0, 0, size.x, size.y));
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.x, size.y), basePaint);
 
     // Texture dots for realistic dirt
-    final dotPaint = Paint()..color = const Color(0xFF6D4C41).withOpacity(0.5);
+    final dotPaint = Paint()..color = theme.groundBottom.withOpacity(0.5);
     for (int i = 0; i < 200; i++) {
       final x = ((i * 17 - _scrollOffset) % size.x + size.x) % size.x;
       final y = (i * 13 % size.y);
@@ -188,7 +198,7 @@ class Ground extends RectangleComponent with HasGameRef {
     }
 
     // Light spots (sand/pebbles)
-    final lightPaint = Paint()..color = const Color(0xFFA0724E).withOpacity(0.3);
+    final lightPaint = Paint()..color = theme.accent.withOpacity(0.18);
     for (int i = 0; i < 100; i++) {
       final x = ((i * 23 - _scrollOffset) % size.x + size.x) % size.x;
       final y = (i * 19 % size.y);
@@ -197,7 +207,7 @@ class Ground extends RectangleComponent with HasGameRef {
 
     // Horizontal texture lines
     final linePaint = Paint()
-      ..color = const Color(0xFF5D4037).withOpacity(0.35)
+      ..color = theme.groundBottom.withOpacity(0.35)
       ..strokeWidth = 1.5;
 
     for (double y = 6; y < size.y; y += 10) {
@@ -226,10 +236,10 @@ class Ground extends RectangleComponent with HasGameRef {
     }
   }
 
-  void _renderStones(Canvas canvas) {
+  void _renderStones(Canvas canvas, EnvironmentTheme theme) {
     final paint = Paint();
     for (var stone in _stones) {
-      paint.color = stone.color;
+      paint.color = Color.lerp(stone.color, theme.groundBottom, 0.45)!;
       canvas.drawRRect(
         RRect.fromRectAndRadius(
           Rect.fromLTWH(
@@ -244,7 +254,7 @@ class Ground extends RectangleComponent with HasGameRef {
       );
 
       // Stone highlight
-      paint.color = const Color(0xFFA1887F).withOpacity(0.5);
+      paint.color = theme.lightColor.withOpacity(0.28);
       canvas.drawRRect(
         RRect.fromRectAndRadius(
           Rect.fromLTWH(
@@ -259,7 +269,7 @@ class Ground extends RectangleComponent with HasGameRef {
       );
 
       // Stone shadow
-      paint.color = const Color(0xFF4E342E).withOpacity(0.3);
+      paint.color = theme.groundBottom.withOpacity(0.45);
       canvas.drawRRect(
         RRect.fromRectAndRadius(
           Rect.fromLTWH(
@@ -275,7 +285,11 @@ class Ground extends RectangleComponent with HasGameRef {
     }
   }
 
-  void _renderGrassBlades(Canvas canvas) {
+  void _renderGrassBlades(Canvas canvas, EnvironmentTheme theme) {
+    if (['cyber', 'space', 'volcano', 'nightmare', 'ocean', 'arctic']
+        .contains(theme.id)) {
+      return;
+    }
     for (var grass in _grassBlades) {
       final x = ((grass.x - _scrollOffset * 0.5) % size.x + size.x) % size.x;
       final currentAngle = grass.getCurrentAngle();
@@ -284,25 +298,30 @@ class Ground extends RectangleComponent with HasGameRef {
       final path = Path();
       path.moveTo(x, 0);
       path.lineTo(x + sin(currentAngle) * currentHeight * 0.3, -currentHeight);
-      path.lineTo(x + cos(currentAngle + 0.5) * currentHeight * 0.2, -currentHeight * 0.6);
-      path.lineTo(x - sin(currentAngle) * currentHeight * 0.2, -currentHeight * 0.3);
+      path.lineTo(x + cos(currentAngle + 0.5) * currentHeight * 0.2,
+          -currentHeight * 0.6);
+      path.lineTo(
+          x - sin(currentAngle) * currentHeight * 0.2, -currentHeight * 0.3);
       path.close();
 
-      canvas.drawPath(path, Paint()..color = grass.color);
+      canvas.drawPath(
+        path,
+        Paint()..color = Color.lerp(grass.color, theme.accent, 0.25)!,
+      );
 
       // Tip of grass (lighter)
       final tipPaint = Paint()..color = grass.color.withOpacity(0.8);
-      canvas.drawCircle(Offset(
-          x + sin(currentAngle) * currentHeight * 0.3,
-          -currentHeight
-      ), 1.5, tipPaint);
+      canvas.drawCircle(
+          Offset(x + sin(currentAngle) * currentHeight * 0.3, -currentHeight),
+          1.5,
+          tipPaint);
     }
   }
 
-  void _renderTopEdgeShadow(Canvas canvas) {
+  void _renderTopEdgeShadow(Canvas canvas, EnvironmentTheme theme) {
     // Dark shadow at the top edge of ground
     final shadowPaint = Paint()
-      ..color = const Color(0xFF5D4037).withOpacity(0.4)
+      ..color = theme.groundBottom.withOpacity(0.48)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
 
     canvas.drawRect(
@@ -312,7 +331,7 @@ class Ground extends RectangleComponent with HasGameRef {
 
     // Top highlight edge
     final edgePaint = Paint()
-      ..color = const Color(0xFFA0724E).withOpacity(0.6)
+      ..color = theme.lightColor.withOpacity(0.45)
       ..strokeWidth = 1.5;
 
     for (double x = 0; x < size.x; x += 4) {
@@ -334,6 +353,58 @@ class Ground extends RectangleComponent with HasGameRef {
       final x = (i * 31 + _time * 200) % size.x;
       final y = (i * 17 + _time * 400) % size.y;
       canvas.drawLine(Offset(x, y), Offset(x - 3, y + 8), rainPaint);
+    }
+  }
+
+  void _renderThemeForeground(Canvas canvas, EnvironmentTheme theme) {
+    final accent = Paint()..color = theme.accent.withOpacity(0.58);
+    final dark = Paint()..color = theme.groundBottom.withOpacity(0.72);
+    for (var i = 0; i < 18; i++) {
+      final x = ((i * 41 - _scrollOffset * 0.75) % size.x + size.x) % size.x;
+      final y = (12 + (i * 17 % max(16, size.y.toInt() - 10))).toDouble();
+      switch (theme.id) {
+        case 'cyber':
+          canvas.drawRect(Rect.fromLTWH(x, y, 18, 3), accent);
+          break;
+        case 'arctic':
+          canvas.drawPath(
+            Path()
+              ..moveTo(x, y + 14)
+              ..lineTo(x + 8, y - 8)
+              ..lineTo(x + 17, y + 14)
+              ..close(),
+            accent,
+          );
+          break;
+        case 'ocean':
+          canvas.drawCircle(Offset(x, y), 4 + (i % 3).toDouble(), accent);
+          break;
+        case 'volcano':
+        case 'nightmare':
+          canvas.drawCircle(Offset(x, y), 3 + (i % 2).toDouble(), accent);
+          break;
+        case 'candy':
+          canvas.drawRRect(
+            RRect.fromRectAndRadius(
+              Rect.fromLTWH(x, y, 18, 8),
+              const Radius.circular(5),
+            ),
+            accent,
+          );
+          break;
+        case 'steampunk':
+          canvas.drawCircle(
+            Offset(x, y),
+            7,
+            Paint()
+              ..color = theme.accent.withOpacity(0.38)
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 2,
+          );
+          break;
+        default:
+          canvas.drawOval(Rect.fromLTWH(x, y, 18, 8), dark);
+      }
     }
   }
 
@@ -388,7 +459,7 @@ class GrassBlade {
     required double height,
     required double angle,
     required this.color,
-  }) : baseHeight = height,
+  })  : baseHeight = height,
         baseAngle = angle,
         _currentHeight = height,
         _currentAngle = angle;

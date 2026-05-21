@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_print
+
 import 'package:flame_audio/flame_audio.dart';
 import 'package:get/get.dart';
 

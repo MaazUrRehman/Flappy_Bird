@@ -1,3 +1,5 @@
+// ignore_for_file: unused_local_variable
+
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/streak_data.dart';
@@ -95,6 +97,14 @@ class StreakController extends GetxController {
 
   /// Reset streak progress (for testing)
   void resetProgress() {
+    completedStreaks.clear();
+    currentStreakId.value = 0;
+    _saveProgress();
+  }
+
+  void failCurrentRun() {
+    activeStreak.value = null;
+    currentProgress.value = 0;
     completedStreaks.clear();
     currentStreakId.value = 0;
     _saveProgress();

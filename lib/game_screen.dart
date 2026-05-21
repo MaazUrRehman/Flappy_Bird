@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flappy_bird/screens/home_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flame/game.dart';

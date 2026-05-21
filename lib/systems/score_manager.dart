@@ -1,4 +1,5 @@
-import 'dart:ui';
+// ignore_for_file: avoid_print
+
 import 'package:flame/components.dart';
 import 'package:flutter/material.dart';
 

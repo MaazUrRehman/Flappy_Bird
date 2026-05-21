@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../controllers/level_controller.dart';
+import '../../models/level_config.dart';
 import '../../widgets/sound_tap.dart';
 import 'streak_screen.dart';
 
-/// LevelsScreen - Shows 20 levels for a selected difficulty
+/// LevelsScreen - Shows 25 levels for a selected difficulty
 class LevelsScreen extends StatelessWidget {
   final String difficulty;
 
@@ -107,7 +108,7 @@ class LevelsScreen extends StatelessWidget {
                       crossAxisSpacing: 12,
                       mainAxisSpacing: 12,
                     ),
-                    itemCount: 20,
+                    itemCount: LevelConfigGenerator.maxLevel,
                     itemBuilder: (context, index) {
                       final level = index + 1;
                       final config =

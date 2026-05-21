@@ -8,6 +8,11 @@ class HUD extends Component with HasGameRef<FlappyBirdGame> {
   late TextComponent _coinText;
   late TextComponent _scoreText;
   late TextComponent _distanceText;
+  late TextComponent _timerText;
+  late TextComponent _coinLabel;
+  late TextComponent _scoreLabel;
+  late TextComponent _distanceLabel;
+  late TextComponent _timerLabel;
 
   double _coinScale = 1.0;
   double _scoreScale = 1.0;
@@ -16,9 +21,16 @@ class HUD extends Component with HasGameRef<FlappyBirdGame> {
   late CustomPaintComponent _coinContainer;
   late CustomPaintComponent _scoreContainer;
   late CustomPaintComponent _distanceContainer;
+  late CustomPaintComponent _timerContainer;
 
   late CustomPaintComponent _starIcon;
   late CustomPaintComponent _flagIcon;
+  late CustomPaintComponent _timerIcon;
+  late CircleComponent _coinIconOuter;
+  late CircleComponent _coinIconInner;
+
+  bool _isLoaded = false;
+  bool _timerVisible = false;
 
   // Helper methods for consistent alignment
   double getLabelY(double y) => y + 10;
@@ -33,22 +45,17 @@ class HUD extends Component with HasGameRef<FlappyBirdGame> {
     _buildCoinContainer();
     _buildScoreContainer();
     _buildDistanceContainer();
+    _buildTimerContainer();
+    _isLoaded = true;
+    _layoutHud();
+    _timerVisible = gameRef.isTimerTask;
   }
 
   void _buildCoinContainer() {
-    const x = 15.0;
-    const y = 15.0;
-    const width = 130.0;
-    const height = 60.0;
-
-    final iconCenterY = getCenterY(y, height);
-    final labelY = getLabelY(y);
-    final valueY = getValueY(y, height);
-
     // Main container with rounded corners and dark blue background
     _coinContainer = CustomPaintComponent(
-      size: Vector2(width, height),
-      position: Vector2(x, y),
+      size: Vector2.zero(),
+      position: Vector2.zero(),
       painter: (canvas, size) {
         final rect = Rect.fromLTWH(0, 0, size.x, size.y);
         final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(12));
@@ -70,39 +77,39 @@ class HUD extends Component with HasGameRef<FlappyBirdGame> {
     add(_coinContainer);
 
     // Coin Icon with center anchor
-    final iconCircle = CircleComponent(
+    _coinIconOuter = CircleComponent(
       radius: 14,
-      position: Vector2(x + 22, iconCenterY),
+      position: Vector2.zero(),
       anchor: Anchor.center,
       paint: Paint()..color = const Color(0xFFFFD700),
     );
-    add(iconCircle);
+    add(_coinIconOuter);
 
-    final innerCircle = CircleComponent(
+    _coinIconInner = CircleComponent(
       radius: 10,
-      position: Vector2(x + 22, iconCenterY),
+      position: Vector2.zero(),
       anchor: Anchor.center,
       paint: Paint()..color = const Color(0xFFFFC107),
     );
-    add(innerCircle);
+    add(_coinIconInner);
 
     // Label
-    final label = TextComponent(
+    _coinLabel = TextComponent(
       text: 'COINS',
-      position: Vector2(x + 50, labelY),
-      textRenderer: TextPaint(style: const TextStyle(
+      textRenderer: TextPaint(
+          style: const TextStyle(
         fontSize: 11,
         color: Colors.white70,
         fontWeight: FontWeight.w500,
       )),
     );
-    add(label);
+    add(_coinLabel);
 
     // Value with proper bottom padding
     _coinText = TextComponent(
       text: '0',
-      position: Vector2(x + 50, valueY),
-      textRenderer: TextPaint(style: const TextStyle(
+      textRenderer: TextPaint(
+          style: const TextStyle(
         fontSize: 24,
         fontWeight: FontWeight.bold,
         color: Color(0xFFFFD700),
@@ -113,20 +120,10 @@ class HUD extends Component with HasGameRef<FlappyBirdGame> {
   }
 
   void _buildScoreContainer() {
-    final screenWidth = gameRef.size.x;
-    const width = 130.0;
-    const height = 60.0;
-    final x = screenWidth / 2 - width / 2;
-    const y = 15.0;
-
-    final iconCenterY = getCenterY(y, height);
-    final labelY = getLabelY(y);
-    final valueY = getValueY(y, height);
-
     // Main container with rounded corners and dark blue background
     _scoreContainer = CustomPaintComponent(
-      size: Vector2(width, height),
-      position: Vector2(x, y),
+      size: Vector2.zero(),
+      position: Vector2.zero(),
       painter: (canvas, size) {
         final rect = Rect.fromLTWH(0, 0, size.x, size.y);
         final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(12));
@@ -150,7 +147,7 @@ class HUD extends Component with HasGameRef<FlappyBirdGame> {
     // Star Icon with center anchor
     _starIcon = CustomPaintComponent(
       size: Vector2(30, 30),
-      position: Vector2(x + 7, iconCenterY - 15),
+      position: Vector2.zero(),
       painter: (canvas, size) {
         final centerX = size.x / 2;
         final centerY = size.y / 2;
@@ -179,22 +176,22 @@ class HUD extends Component with HasGameRef<FlappyBirdGame> {
     add(_starIcon);
 
     // Label
-    final label = TextComponent(
+    _scoreLabel = TextComponent(
       text: 'SCORE',
-      position: Vector2(x + 50, labelY),
-      textRenderer: TextPaint(style: const TextStyle(
+      textRenderer: TextPaint(
+          style: const TextStyle(
         fontSize: 11,
         color: Colors.white70,
         fontWeight: FontWeight.w500,
       )),
     );
-    add(label);
+    add(_scoreLabel);
 
     // Value with proper bottom padding
     _scoreText = TextComponent(
       text: '0',
-      position: Vector2(x + 50, valueY),
-      textRenderer: TextPaint(style: const TextStyle(
+      textRenderer: TextPaint(
+          style: const TextStyle(
         fontSize: 24,
         fontWeight: FontWeight.bold,
         color: Color(0xFFFF6B6B),
@@ -205,20 +202,10 @@ class HUD extends Component with HasGameRef<FlappyBirdGame> {
   }
 
   void _buildDistanceContainer() {
-    final screenWidth = gameRef.size.x;
-    const width = 130.0;
-    const height = 60.0;
-    final x = screenWidth - width - 15;
-    const y = 15.0;
-
-    final iconCenterY = getCenterY(y, height);
-    final labelY = getLabelY(y);
-    final valueY = getValueY(y, height);
-
     // Main container with rounded corners and dark blue background
     _distanceContainer = CustomPaintComponent(
-      size: Vector2(width, height),
-      position: Vector2(x, y),
+      size: Vector2.zero(),
+      position: Vector2.zero(),
       painter: (canvas, size) {
         final rect = Rect.fromLTWH(0, 0, size.x, size.y);
         final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(12));
@@ -242,7 +229,7 @@ class HUD extends Component with HasGameRef<FlappyBirdGame> {
     // Flag Icon with center anchor
     _flagIcon = CustomPaintComponent(
       size: Vector2(40, 40),
-      position: Vector2(x + 2, iconCenterY - 20),
+      position: Vector2.zero(),
       painter: (canvas, size) {
         // Flag pole
         final polePaint = Paint()
@@ -251,7 +238,7 @@ class HUD extends Component with HasGameRef<FlappyBirdGame> {
           ..style = PaintingStyle.stroke;
         canvas.drawLine(
           Offset(15, size.y - 15),
-          Offset(15, 5),
+          const Offset(15, 5),
           polePaint,
         );
 
@@ -269,22 +256,22 @@ class HUD extends Component with HasGameRef<FlappyBirdGame> {
     add(_flagIcon);
 
     // Label
-    final label = TextComponent(
+    _distanceLabel = TextComponent(
       text: 'DISTANCE',
-      position: Vector2(x + 50, labelY),
-      textRenderer: TextPaint(style: const TextStyle(
+      textRenderer: TextPaint(
+          style: const TextStyle(
         fontSize: 11,
         color: Colors.white70,
         fontWeight: FontWeight.w500,
       )),
     );
-    add(label);
+    add(_distanceLabel);
 
     // Value with proper bottom padding
     _distanceText = TextComponent(
       text: '0',
-      position: Vector2(x + 50, valueY),
-      textRenderer: TextPaint(style: const TextStyle(
+      textRenderer: TextPaint(
+          style: const TextStyle(
         fontSize: 24,
         fontWeight: FontWeight.bold,
         color: Color(0xFF4CAF50),
@@ -292,6 +279,252 @@ class HUD extends Component with HasGameRef<FlappyBirdGame> {
       )),
     );
     add(_distanceText);
+  }
+
+  void _buildTimerContainer() {
+    _timerContainer = CustomPaintComponent(
+      size: Vector2.zero(),
+      position: Vector2.zero(),
+      painter: (canvas, size) {
+        final rect = Rect.fromLTWH(0, 0, size.x, size.y);
+        final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(12));
+
+        final fillPaint = Paint()
+          ..color = const Color(0xFF1A1A2E).withOpacity(0.9)
+          ..style = PaintingStyle.fill;
+        canvas.drawRRect(rrect, fillPaint);
+
+        final borderPaint = Paint()
+          ..color = const Color(0xFF40C4FF).withOpacity(0.85)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2;
+        canvas.drawRRect(rrect, borderPaint);
+      },
+    );
+    add(_timerContainer);
+
+    _timerIcon = CustomPaintComponent(
+      size: Vector2.zero(),
+      position: Vector2.zero(),
+      painter: (canvas, size) {
+        if (size.x <= 0 || size.y <= 0) return;
+
+        final center = Offset(size.x / 2, size.y / 2);
+        final radius = min(size.x, size.y) / 2 - 3;
+        final clockPaint = Paint()
+          ..color = const Color(0xFF40C4FF)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.2;
+        final handPaint = Paint()
+          ..color = Colors.white
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2
+          ..strokeCap = StrokeCap.round;
+
+        canvas.drawCircle(center, radius, clockPaint);
+        canvas.drawLine(
+            center, Offset(center.dx, center.dy - radius * 0.55), handPaint);
+        canvas.drawLine(
+            center, Offset(center.dx + radius * 0.45, center.dy), handPaint);
+      },
+    );
+    add(_timerIcon);
+
+    _timerLabel = TextComponent(
+      text: '',
+      textRenderer: TextPaint(
+          style: const TextStyle(
+        fontSize: 11,
+        color: Colors.white70,
+        fontWeight: FontWeight.w500,
+      )),
+    );
+    add(_timerLabel);
+
+    _timerText = TextComponent(
+      text: '',
+      textRenderer: TextPaint(
+          style: const TextStyle(
+        fontSize: 24,
+        fontWeight: FontWeight.bold,
+        color: Color(0xFF40C4FF),
+        fontFamily: 'monospace',
+      )),
+    );
+    add(_timerText);
+  }
+
+  _HudLayout _hudLayout() {
+    final screenWidth = gameRef.size.x;
+    final isCompact = screenWidth < 430;
+    final padding = isCompact ? 8.0 : 15.0;
+    final gap = isCompact ? 6.0 : 12.0;
+    final cardCount = gameRef.isTimerTask ? 4 : 3;
+    final availableWidth =
+        max(0.0, screenWidth - (padding * 2) - (gap * (cardCount - 1)));
+    final cardWidth = min(130.0, availableWidth / cardCount);
+    final cardHeight = isCompact ? 54.0 : 60.0;
+    final y = isCompact ? 10.0 : 15.0;
+    final iconX = isCompact ? 18.0 : 22.0;
+    final textX = isCompact ? 36.0 : 50.0;
+    final labelFontSize = isCompact ? 9.0 : 11.0;
+    final valueFontSize = isCompact ? 20.0 : 24.0;
+    final iconScale = isCompact ? 0.78 : 1.0;
+
+    return _HudLayout(
+      padding: padding,
+      gap: gap,
+      width: cardWidth,
+      height: cardHeight,
+      y: y,
+      iconX: iconX,
+      textX: textX,
+      labelFontSize: labelFontSize,
+      valueFontSize: valueFontSize,
+      iconScale: iconScale,
+    );
+  }
+
+  void _layoutHud() {
+    final layout = _hudLayout();
+    final coinX = layout.padding;
+    final scoreX = coinX + layout.width + layout.gap;
+    final distanceX = scoreX + layout.width + layout.gap;
+    final timerX = distanceX + layout.width + layout.gap;
+
+    _layoutCoinCard(coinX, layout);
+    _layoutScoreCard(scoreX, layout);
+    _layoutDistanceCard(distanceX, layout);
+    _layoutTimerCard(timerX, layout);
+  }
+
+  void _layoutCoinCard(double x, _HudLayout layout) {
+    final iconCenterY = getCenterY(layout.y, layout.height);
+    final labelY = getLabelY(layout.y);
+    final valueY = getValueY(layout.y, layout.height);
+
+    _coinContainer
+      ..position = Vector2(x, layout.y)
+      ..size = Vector2(layout.width, layout.height);
+    _coinIconOuter
+      ..position = Vector2(x + layout.iconX, iconCenterY)
+      ..radius = 14 * layout.iconScale;
+    _coinIconInner
+      ..position = Vector2(x + layout.iconX, iconCenterY)
+      ..radius = 10 * layout.iconScale;
+    _coinLabel
+      ..position = Vector2(x + layout.textX, labelY)
+      ..textRenderer = _labelRenderer(layout.labelFontSize);
+    _coinText
+      ..position = Vector2(x + layout.textX, valueY)
+      ..textRenderer =
+          _valueRenderer(layout.valueFontSize, const Color(0xFFFFD700));
+  }
+
+  void _layoutScoreCard(double x, _HudLayout layout) {
+    final iconCenterY = getCenterY(layout.y, layout.height);
+    final labelY = getLabelY(layout.y);
+    final valueY = getValueY(layout.y, layout.height);
+    final iconSize = 30 * layout.iconScale;
+
+    _scoreContainer
+      ..position = Vector2(x, layout.y)
+      ..size = Vector2(layout.width, layout.height);
+    _starIcon
+      ..position =
+          Vector2(x + layout.iconX - iconSize / 2, iconCenterY - iconSize / 2)
+      ..size = Vector2.all(iconSize);
+    _scoreLabel
+      ..position = Vector2(x + layout.textX, labelY)
+      ..textRenderer = _labelRenderer(layout.labelFontSize);
+    _scoreText
+      ..position = Vector2(x + layout.textX, valueY)
+      ..textRenderer =
+          _valueRenderer(layout.valueFontSize, const Color(0xFFFF6B6B));
+  }
+
+  void _layoutDistanceCard(double x, _HudLayout layout) {
+    final iconCenterY = getCenterY(layout.y, layout.height);
+    final labelY = getLabelY(layout.y);
+    final valueY = getValueY(layout.y, layout.height);
+    final iconSize = 40 * layout.iconScale;
+
+    _distanceContainer
+      ..position = Vector2(x, layout.y)
+      ..size = Vector2(layout.width, layout.height);
+    _flagIcon
+      ..position =
+          Vector2(x + layout.iconX - iconSize / 2, iconCenterY - iconSize / 2)
+      ..size = Vector2.all(iconSize);
+    _distanceLabel
+      ..position = Vector2(x + layout.textX, labelY)
+      ..textRenderer = _labelRenderer(layout.labelFontSize);
+    _distanceText
+      ..position = Vector2(x + layout.textX, valueY)
+      ..textRenderer =
+          _valueRenderer(layout.valueFontSize, const Color(0xFF4CAF50));
+  }
+
+  void _layoutTimerCard(double x, _HudLayout layout) {
+    final isVisible = gameRef.isTimerTask;
+    if (!isVisible) {
+      _timerContainer.size = Vector2.zero();
+      _timerIcon.size = Vector2.zero();
+      _timerLabel.text = '';
+      _timerText.text = '';
+      return;
+    }
+
+    final y = layout.y;
+    final iconCenterY = getCenterY(y, layout.height);
+    final labelY = getLabelY(y);
+    final valueY = getValueY(y, layout.height);
+    final iconSize = 32 * layout.iconScale;
+
+    _timerContainer
+      ..position = Vector2(x, y)
+      ..size = Vector2(layout.width, layout.height);
+    _timerIcon
+      ..position =
+          Vector2(x + layout.iconX - iconSize / 2, iconCenterY - iconSize / 2)
+      ..size = Vector2.all(iconSize);
+    _timerLabel
+      ..text = 'TIME'
+      ..position = Vector2(x + layout.textX, labelY)
+      ..textRenderer = _labelRenderer(layout.labelFontSize);
+    _timerText
+      ..position = Vector2(x + layout.textX, valueY)
+      ..textRenderer =
+          _valueRenderer(layout.valueFontSize, const Color(0xFF40C4FF));
+  }
+
+  TextPaint _labelRenderer(double fontSize) {
+    return TextPaint(
+      style: TextStyle(
+        fontSize: fontSize,
+        color: Colors.white70,
+        fontWeight: FontWeight.w500,
+      ),
+    );
+  }
+
+  TextPaint _valueRenderer(double fontSize, Color color) {
+    return TextPaint(
+      style: TextStyle(
+        fontSize: fontSize,
+        fontWeight: FontWeight.bold,
+        color: color,
+        fontFamily: 'monospace',
+      ),
+    );
+  }
+
+  @override
+  void onGameResize(Vector2 size) {
+    super.onGameResize(size);
+    if (_isLoaded) {
+      _layoutHud();
+    }
   }
 
   void notifyCoinCollected() {
@@ -311,6 +544,10 @@ class HUD extends Component with HasGameRef<FlappyBirdGame> {
 
   @override
   void update(double dt) {
+    if (_isLoaded && gameRef.isTimerTask != _timerVisible) {
+      _layoutHud();
+      _timerVisible = gameRef.isTimerTask;
+    }
     _updateScales(dt);
     _updateValues();
   }
@@ -338,7 +575,40 @@ class HUD extends Component with HasGameRef<FlappyBirdGame> {
 
     final distance = gameRef.distance.toInt();
     _distanceText.text = '$distance';
+
+    final layout = _hudLayout();
+    final timerX = layout.padding + ((layout.width + layout.gap) * 3);
+    _layoutTimerCard(timerX, layout);
+    if (gameRef.isTimerTask) {
+      _timerText.text = '${gameRef.remainingTaskSeconds}s';
+    }
   }
+}
+
+class _HudLayout {
+  final double padding;
+  final double gap;
+  final double width;
+  final double height;
+  final double y;
+  final double iconX;
+  final double textX;
+  final double labelFontSize;
+  final double valueFontSize;
+  final double iconScale;
+
+  const _HudLayout({
+    required this.padding,
+    required this.gap,
+    required this.width,
+    required this.height,
+    required this.y,
+    required this.iconX,
+    required this.textX,
+    required this.labelFontSize,
+    required this.valueFontSize,
+    required this.iconScale,
+  });
 }
 
 // Helper component for custom painting
