@@ -228,7 +228,10 @@ class _GameOverUIState extends State<GameOverUI> {
   /// Successfully guessed word - Resume the flappy bird game
   void _onWordGameSuccess() {
     _stopSolvedCountdown();
-    widget.game.reviveBird(enableUserControl: false);
+    widget.game
+        .reviveBird(enableUserControl: false, resumeEngineAfterRevive: false);
+    widget.game.prepareStartCountdown();
+    widget.game.resumeEngine();
 
     setState(() {
       _showWordGame = false;
@@ -255,7 +258,8 @@ class _GameOverUIState extends State<GameOverUI> {
 
   void _finishSolvedCountdown() {
     _stopSolvedCountdown();
-    widget.game.setUserControlEnabled(true);
+    widget.game.completeStartCountdown();
+    widget.game.resumeEngine();
     widget.game.overlays.remove('GameOver');
   }
 

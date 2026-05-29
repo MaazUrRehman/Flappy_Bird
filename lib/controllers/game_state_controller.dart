@@ -329,7 +329,33 @@ class GameStateController extends GetxController {
   }
 
   Future<void> _ensureFreeShopItems() async {
-    const freeBirds = ['default', 'blue', 'red'];
+    const freeBirds = [
+      'default',
+      'blue',
+      'red',
+      'green',
+      'purple',
+      'orange',
+      'pink',
+      'gold',
+      'ember',
+      'frost',
+      'forest_bird',
+      'cyber_bird',
+      'shadow',
+      'candy_bird',
+      'royal',
+      'ninja',
+      'crystal',
+      'samurai',
+      'angel',
+      'demon',
+      'aqua',
+      'desert_bird',
+      'thunder',
+      'ghost',
+      'magma',
+    ];
     const freeEnvironments = [
       'default',
       'forest',

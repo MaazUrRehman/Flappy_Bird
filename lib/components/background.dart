@@ -77,6 +77,8 @@ class Background extends Component with HasGameRef {
     _drawVignette(canvas, rect, theme);
   }
 
+  double _environmentBaseY(double height) => height;
+
   void _drawSky(Canvas canvas, Rect rect, EnvironmentTheme theme) {
     final paint = Paint()
       ..shader = LinearGradient(
@@ -232,7 +234,7 @@ class Background extends Component with HasGameRef {
     double height,
     EnvironmentTheme theme,
   ) {
-    final baseY = height - 66;
+    final baseY = _environmentBaseY(height);
     final paint = Paint()..color = theme.foregroundColor.withOpacity(0.92);
 
     for (var i = 0; i < 14; i++) {
@@ -407,7 +409,7 @@ class Background extends Component with HasGameRef {
       {required bool dense}) {
     final paint = Paint()..color = t.midColor.withOpacity(0.86);
     final trunkPaint = Paint()..color = t.foregroundColor.withOpacity(0.74);
-    final base = h - 66;
+    final base = _environmentBaseY(h);
     final count = dense ? 18 : 14;
     for (var i = 0; i < count; i++) {
       final x = ((i * 58 - _time * 22) % (w + 120)) - 60;
@@ -436,7 +438,7 @@ class Background extends Component with HasGameRef {
       {required bool far}) {
     final paint = Paint()
       ..color = (far ? t.farColor : t.midColor).withOpacity(far ? 0.58 : 0.88);
-    final base = h - 66;
+    final base = _environmentBaseY(h);
     final width = far ? 44.0 : 62.0;
     for (var i = -1; i < 11; i++) {
       final x = ((i * width * 1.4 - _time * (far ? 12 : 28)) % (w + 120)) - 60;
@@ -457,7 +459,7 @@ class Background extends Component with HasGameRef {
 
   void _drawCanyon(Canvas canvas, double w, double h, EnvironmentTheme t) {
     final paint = Paint()..color = t.midColor.withOpacity(0.78);
-    final base = h - 66;
+    final base = _environmentBaseY(h);
     for (var i = -1; i < 8; i++) {
       final x = ((i * 90 - _time * 18) % (w + 180)) - 90;
       final pillarH = (90 + (i % 4) * 36).toDouble();
@@ -476,7 +478,7 @@ class Background extends Component with HasGameRef {
 
   void _drawCastleAndGraves(
       Canvas canvas, double w, double h, EnvironmentTheme t) {
-    final base = h - 66;
+    final base = _environmentBaseY(h);
     final p = Paint()..color = t.midColor.withOpacity(0.86);
     canvas.drawRRect(
         RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.62, base - 210, 130, 210),
@@ -497,7 +499,7 @@ class Background extends Component with HasGameRef {
   }
 
   void _drawCandyHills(Canvas canvas, double w, double h, EnvironmentTheme t) {
-    final base = h - 66;
+    final base = _environmentBaseY(h);
     for (var i = 0; i < 5; i++) {
       final paint = Paint()
         ..color = (i.isEven ? t.midColor : t.accent).withOpacity(0.55);
@@ -527,7 +529,7 @@ class Background extends Component with HasGameRef {
 
   void _drawRuins(Canvas canvas, double w, double h, EnvironmentTheme t,
       {required bool far}) {
-    final base = h - 66;
+    final base = _environmentBaseY(h);
     final paint = Paint()
       ..color = (far ? t.farColor : t.midColor).withOpacity(far ? 0.5 : 0.78);
     for (var i = 0; i < 7; i++) {
@@ -548,13 +550,13 @@ class Background extends Component with HasGameRef {
         Path()
           ..moveTo(w * 0.48, h * 0.42)
           ..lineTo(w * 0.52, h * 0.42)
-          ..lineTo(w * 0.5, h - 66)
+          ..lineTo(w * 0.5, _environmentBaseY(h))
           ..close(),
         lava);
   }
 
   void _drawPagodas(Canvas canvas, double w, double h, EnvironmentTheme t) {
-    final base = h - 66;
+    final base = _environmentBaseY(h);
     final paint = Paint()..color = t.midColor.withOpacity(0.8);
     for (var i = 0; i < 3; i++) {
       final x = w * (0.2 + i * 0.25) - (_time * 8 % 80);
@@ -607,7 +609,7 @@ class Background extends Component with HasGameRef {
   void _drawNightmareSpikes(
       Canvas canvas, double w, double h, EnvironmentTheme t) {
     final p = Paint()..color = t.midColor.withOpacity(0.9);
-    final base = h - 66;
+    final base = _environmentBaseY(h);
     for (var i = 0; i < 12; i++) {
       final x = ((i * 55 - _time * 20) % (w + 100)) - 50;
       canvas.drawPath(

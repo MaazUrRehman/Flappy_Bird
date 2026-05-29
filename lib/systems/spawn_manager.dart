@@ -84,7 +84,6 @@ class SpawnManager extends Component with HasGameRef<FlappyBirdGame> {
     } else {
       _spawnRandomCoinsInGap(minCoinY, maxCoinY);
     }
-
   }
 
   // ✅ NEW: Spawn random coins strictly inside gap
@@ -150,7 +149,7 @@ class SpawnManager extends Component with HasGameRef<FlappyBirdGame> {
 
   void spawnPipes() {
     final screenHeight = gameRef.size.y;
-    const groundHeight = 55.0;
+    const groundHeight = 0.0;
 
     // Dynamic gap based on score
     double dynamicGap = _calculateDynamicGap();

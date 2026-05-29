@@ -18,11 +18,11 @@ void main() {
     );
     expect(
       levelOne.streaks.map((task) => task.target),
-      [1000, 50, 100],
+      [1000, 50, 30],
     );
     expect(
       levelTwo.streaks.map((task) => task.target),
-      [1500, 100, 200],
+      [1500, 100, 45],
     );
     expect(levelFive.streaks.length, 4);
     expect(
@@ -59,5 +59,25 @@ void main() {
           ),
       [3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8],
     );
+  });
+
+  test('survival streak time scales by difficulty and level', () {
+    final expectations = {
+      Difficulty.easy: [30, 45, 60],
+      Difficulty.medium: [60, 90, 120],
+      Difficulty.hard: [90, 135, 180],
+      Difficulty.extreme: [120, 180, 240],
+    };
+
+    for (final entry in expectations.entries) {
+      for (var level = 1; level <= entry.value.length; level++) {
+        final config = LevelConfigGenerator.generateLevel(entry.key, level);
+        final survivalTask = config.streaks.firstWhere(
+          (task) => task.type == TaskType.survival,
+        );
+
+        expect(survivalTask.target, entry.value[level - 1]);
+      }
+    }
   });
 }

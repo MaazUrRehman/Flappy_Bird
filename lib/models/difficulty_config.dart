@@ -40,7 +40,7 @@ class DifficultyConfig {
         targetScore: 15,
         coinTarget: 8,
         distanceTarget: 400,
-        survivalTime: 45,
+        survivalTime: 60,
       );
 
   factory DifficultyConfig.hard() => const DifficultyConfig(
@@ -50,7 +50,7 @@ class DifficultyConfig {
         targetScore: 25,
         coinTarget: 12,
         distanceTarget: 600,
-        survivalTime: 60,
+        survivalTime: 90,
         hasMovingPipes: true,
       );
 
@@ -61,7 +61,7 @@ class DifficultyConfig {
         targetScore: 50,
         coinTarget: 20,
         distanceTarget: 800,
-        survivalTime: 90,
+        survivalTime: 120,
         hasMovingPipes: true,
         hasRandomPatterns: true,
       );

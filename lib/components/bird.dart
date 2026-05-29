@@ -503,7 +503,10 @@ class Bird extends RectangleComponent
   }
 
   void jump() {
-    if (!gameRef.isGameOver && isAlive) {
+    if (!gameRef.isGameOver &&
+        !gameRef.isCountdownActive &&
+        gameRef.isUserControlEnabled &&
+        isAlive) {
       velocity = min(velocity, 0) + jumpForce;
       velocity = velocity.clamp(maxRiseSpeed, maxFallSpeed).toDouble();
       _scalePulse = 0.3;
@@ -530,6 +533,13 @@ class Bird extends RectangleComponent
 
     final step = dt.clamp(0.0, 1 / 30).toDouble();
     _timeAlive += step;
+
+    if (gameRef.isCountdownActive) {
+      velocity = 0;
+      angle += (0 - angle) * min(1, step * 12);
+      scale.setValues(1.0, 1.0);
+      return;
+    }
 
     final previousVelocity = velocity;
     velocity = (velocity + gravity * step)
@@ -567,7 +577,7 @@ class Bird extends RectangleComponent
       _triggerGameOver();
     }
 
-    double groundY = gameRef.size.y - 55;
+    double groundY = gameRef.size.y;
 
     if (position.y + size.y >= groundY) {
       position.y = groundY - size.y;

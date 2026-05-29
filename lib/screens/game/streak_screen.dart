@@ -1,7 +1,9 @@
 import 'dart:async';
 
+import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+
 import '../../controllers/game_state_controller.dart';
 import '../../controllers/level_controller.dart';
 import '../../game/flappy_bird_game.dart';
@@ -9,9 +11,7 @@ import '../../models/level_config.dart';
 import '../../widgets/sound_tap.dart';
 import '../game_over_screen.dart';
 import '../pause_screen.dart';
-import 'package:flame/game.dart';
 
-/// StreakScreen - Shows streaks for a specific level
 class StreakScreen extends StatelessWidget {
   final String difficulty;
   final int level;
@@ -60,19 +60,6 @@ class StreakScreen extends StatelessWidget {
     final streakCount = levelConfig.streaks.length;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Level $level - Streaks'),
-        backgroundColor: const Color(0xFF1A1A2E),
-        elevation: 0,
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            playClickSound();
-            Navigator.pop(context);
-          },
-        ),
-      ),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -81,93 +68,70 @@ class StreakScreen extends StatelessWidget {
             colors: [Color(0xFF0F3460), Color(0xFF1A1A2E)],
           ),
         ),
-        child: Column(
-          children: [
-            // Level header
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              color: _difficultyColor.withOpacity(0.2),
-              child: Column(
-                children: [
-                  Text(
-                    'Level $level',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: _difficultyColor,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '$_difficultyTitle Mode • $streakCount Streaks',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Colors.white70,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Streaks list
-            Expanded(
-              child: Obx(
-                () {
-                  // Read Rx values here so Obx tracks this widget correctly.
-                  final completed = gameState.completedStreaks.toList();
-                  final levelCompleted =
-                      levelController.completedStreaks.toList();
-                  final progress =
-                      Map<String, int>.from(gameState.levelProgress);
-
-                  return ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: streakCount,
-                    itemBuilder: (context, index) {
-                      final streak = index + 1;
-                      final taskConfig = levelConfig.streaks[index];
-                      final streakKey = '${difficulty}_${level}_$streak';
-                      final isUnlocked = levelController.isStreakUnlocked(
-                        difficulty,
-                        level,
-                        streak,
-                      );
-                      final isCompleted = completed.contains(streakKey) ||
-                          levelCompleted.contains(streakKey);
-                      final bestScore = progress[streakKey] ?? 0;
-                      final task = taskConfig.description;
-
-                      return _StreakTile(
-                        streak: streak,
-                        task: task,
-                        isUnlocked: isUnlocked,
-                        isCompleted: isCompleted,
-                        bestScore: bestScore,
-                        color: _difficultyColor,
-                        onTap: isUnlocked && !isCompleted
-                            ? () => _startGame(context, streak, taskConfig)
-                            : null,
-                      );
-                    },
-                  );
+        child: SafeArea(
+          child: Column(
+            children: [
+              _ScreenHeader(
+                title: 'Level $level',
+                subtitle: '$_difficultyTitle Mode - $streakCount Streaks',
+                color: _difficultyColor,
+                onBack: () {
+                  playClickSound();
+                  Navigator.pop(context);
                 },
               ),
-            ),
-          ],
+              Expanded(
+                child: Obx(
+                  () {
+                    final completed = gameState.completedStreaks.toList();
+                    final levelCompleted =
+                        levelController.completedStreaks.toList();
+                    final progress =
+                        Map<String, int>.from(gameState.levelProgress);
+
+                    return ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: streakCount,
+                      itemBuilder: (context, index) {
+                        final streak = index + 1;
+                        final taskConfig = levelConfig.streaks[index];
+                        final streakKey = '${difficulty}_${level}_$streak';
+                        final isUnlocked = levelController.isStreakUnlocked(
+                          difficulty,
+                          level,
+                          streak,
+                        );
+                        final isCompleted = completed.contains(streakKey) ||
+                            levelCompleted.contains(streakKey);
+                        final bestScore = progress[streakKey] ?? 0;
+
+                        return _StreakTile(
+                          streak: streak,
+                          task: taskConfig.description,
+                          isUnlocked: isUnlocked,
+                          isCompleted: isCompleted,
+                          bestScore: bestScore,
+                          color: _difficultyColor,
+                          onTap: isUnlocked && !isCompleted
+                              ? () => _startGame(context, streak, taskConfig)
+                              : null,
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   void _startGame(BuildContext context, int streak, TaskConfig taskConfig) {
-    // Create game with difficulty and level settings
     final game = FlappyBirdGame();
-
-    // Get the task for this streak
     final task = taskConfig.description;
 
-    // Set game mode for streak with task info
     game.setGameMode(
       difficulty: difficulty,
       level: level,
@@ -177,10 +141,8 @@ class StreakScreen extends StatelessWidget {
       taskTarget: taskConfig.target,
     );
 
-    // Prepare the game for the pre-start countdown sequence
     game.prepareStartCountdown();
 
-    // Register Streak Preview overlay (shown before game starts)
     game.overlays.addEntry(
       'StreakPreview',
       (context, gameRef) => _StreakPreviewOverlay(
@@ -190,7 +152,6 @@ class StreakScreen extends StatelessWidget {
     );
     game.overlays.add('StreakPreview');
 
-    // Register Streak Complete overlay (shown when task is completed)
     game.overlays.addEntry(
       'StreakComplete',
       (context, gameRef) => _StreakCompleteOverlay(
@@ -208,18 +169,14 @@ class StreakScreen extends StatelessWidget {
       ),
     );
 
-    // Register GameOver overlay
     game.overlays.addEntry(
       'GameOver',
       (context, gameRef) => GameOverUI(
         game: gameRef as FlappyBirdGame,
-        onHomePressed: () {
-          Navigator.of(context).pop();
-        },
+        onHomePressed: () => Navigator.of(context).pop(),
       ),
     );
 
-    // Register Pause button and menu overlay
     game.overlays.addEntry(
       'PauseButton',
       (context, gameRef) => PauseButtonOverlay(game: gameRef as FlappyBirdGame),
@@ -228,9 +185,7 @@ class StreakScreen extends StatelessWidget {
       'PauseMenu',
       (context, gameRef) => PauseMenuOverlay(
         game: gameRef as FlappyBirdGame,
-        onHomePressed: () {
-          Navigator.of(context).pop();
-        },
+        onHomePressed: () => Navigator.of(context).pop(),
       ),
     );
     game.overlays.add('PauseButton');
@@ -239,16 +194,70 @@ class StreakScreen extends StatelessWidget {
       context,
       MaterialPageRoute(
         builder: (context) => Scaffold(
-          body: GameWidget(
-            game: game,
-          ),
+          body: GameWidget(game: game),
         ),
       ),
     );
   }
 }
 
-// ==================== STREAK PREVIEW OVERLAY ====================
+class _ScreenHeader extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final Color color;
+  final VoidCallback onBack;
+
+  const _ScreenHeader({
+    required this.title,
+    required this.subtitle,
+    required this.color,
+    required this.onBack,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(8, 8, 18, 14),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.18),
+        border: Border(bottom: BorderSide(color: color.withOpacity(0.28))),
+      ),
+      child: Row(
+        children: [
+          SoundTap(
+            onTap: onBack,
+            child: const SizedBox(
+              width: 48,
+              height: 48,
+              child: Icon(Icons.arrow_back, color: Colors.white, size: 30),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: const TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _StreakPreviewOverlay extends StatefulWidget {
   final FlappyBirdGame game;
@@ -316,11 +325,7 @@ class _StreakPreviewOverlayState extends State<_StreakPreviewOverlay> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
-                Icons.flag,
-                color: Colors.amber,
-                size: 64,
-              ),
+              const Icon(Icons.flag, color: Colors.amber, size: 64),
               const SizedBox(height: 24),
               const Text(
                 'STREAK TASK',
@@ -362,10 +367,7 @@ class _StreakPreviewOverlayState extends State<_StreakPreviewOverlay> {
               const SizedBox(height: 16),
               const Text(
                 'Tap will activate after countdown',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 16,
-                ),
+                style: TextStyle(color: Colors.white70, fontSize: 16),
               ),
             ],
           ),
@@ -374,8 +376,6 @@ class _StreakPreviewOverlayState extends State<_StreakPreviewOverlay> {
     );
   }
 }
-
-// ==================== STREAK COMPLETE OVERLAY ====================
 
 class _StreakCompleteOverlay extends StatefulWidget {
   final FlappyBirdGame game;
@@ -396,17 +396,12 @@ class _StreakCompleteOverlayState extends State<_StreakCompleteOverlay> {
   @override
   void initState() {
     super.initState();
-    // ✅ FIX 2: Pause game engine when achievement success modal appears
     widget.game.pauseEngine();
 
-    // Auto-dismiss after 3 seconds
     Future.delayed(const Duration(seconds: 3), () {
       if (mounted) {
-        // Remove the overlay
         widget.game.overlays.remove('StreakComplete');
-        // ✅ Resume game engine after modal is dismissed
         widget.game.resumeEngine();
-        // Navigate back to streak screen
         widget.onComplete();
       }
     });
@@ -421,11 +416,7 @@ class _StreakCompleteOverlayState extends State<_StreakCompleteOverlay> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
-                Icons.check_circle,
-                color: Colors.green,
-                size: 80,
-              ),
+              const Icon(Icons.check_circle, color: Colors.green, size: 80),
               const SizedBox(height: 24),
               const Text(
                 'STREAK COMPLETE!',
@@ -458,10 +449,7 @@ class _StreakCompleteOverlayState extends State<_StreakCompleteOverlay> {
               const SizedBox(height: 32),
               const Text(
                 'Great job!',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 16,
-                ),
+                style: TextStyle(color: Colors.white70, fontSize: 16),
               ),
             ],
           ),
@@ -510,7 +498,6 @@ class _StreakTile extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // Streak number
             Container(
               width: 50,
               height: 50,
@@ -534,8 +521,6 @@ class _StreakTile extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 16),
-
-            // Task info
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -585,8 +570,6 @@ class _StreakTile extends StatelessWidget {
                 ],
               ),
             ),
-
-            // Play icon
             if (isCompleted)
               const Icon(Icons.check_circle, color: Colors.greenAccent)
             else if (isUnlocked)

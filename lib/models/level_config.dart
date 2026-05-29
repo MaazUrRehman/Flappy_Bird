@@ -98,7 +98,7 @@ class LevelConfigGenerator {
       ),
       TaskConfig(
         type: TaskType.survival,
-        target: _targetForLevel(base.survival, growth.survival, level),
+        target: _survivalTargetForLevel(base.survival, growth.survival, level),
       ),
       TaskConfig(
         type: TaskType.coins,
@@ -164,7 +164,7 @@ class LevelConfigGenerator {
           coins: 40,
           score: 50,
           distance: 1000,
-          survival: 100,
+          survival: 30,
           pipes: 12,
           flaps: 35,
           coinScore: 18,
@@ -176,7 +176,7 @@ class LevelConfigGenerator {
           coins: 60,
           score: 100,
           distance: 1500,
-          survival: 150,
+          survival: 60,
           pipes: 18,
           flaps: 50,
           coinScore: 55,
@@ -188,7 +188,7 @@ class LevelConfigGenerator {
           coins: 80,
           score: 150,
           distance: 2000,
-          survival: 200,
+          survival: 90,
           pipes: 24,
           flaps: 65,
           coinScore: 85,
@@ -200,7 +200,7 @@ class LevelConfigGenerator {
           coins: 100,
           score: 200,
           distance: 2500,
-          survival: 250,
+          survival: 120,
           pipes: 30,
           flaps: 80,
           coinScore: 135,
@@ -217,7 +217,7 @@ class LevelConfigGenerator {
           coins: 40,
           score: 50,
           distance: 500,
-          survival: 100,
+          survival: 15,
           pipes: 8,
           flaps: 20,
           coinScore: 20,
@@ -229,7 +229,7 @@ class LevelConfigGenerator {
           coins: 60,
           score: 100,
           distance: 1000,
-          survival: 150,
+          survival: 30,
           pipes: 10,
           flaps: 25,
           coinScore: 35,
@@ -241,7 +241,7 @@ class LevelConfigGenerator {
           coins: 80,
           score: 150,
           distance: 1500,
-          survival: 200,
+          survival: 45,
           pipes: 12,
           flaps: 30,
           coinScore: 50,
@@ -253,7 +253,7 @@ class LevelConfigGenerator {
           coins: 100,
           score: 200,
           distance: 2000,
-          survival: 250,
+          survival: 60,
           pipes: 15,
           flaps: 35,
           coinScore: 75,
@@ -265,6 +265,10 @@ class LevelConfigGenerator {
 
   static int _targetForLevel(int base, int growth, int level) {
     return _roundUp(base + (growth * (level - 1)), _roundingStep(growth));
+  }
+
+  static int _survivalTargetForLevel(int base, int growth, int level) {
+    return base + (growth * (level - 1));
   }
 
   static int _roundingStep(int growth) {

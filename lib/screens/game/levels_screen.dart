@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+
 import '../../controllers/level_controller.dart';
 import '../../models/level_config.dart';
 import '../../widgets/sound_tap.dart';
 import 'streak_screen.dart';
 
-/// LevelsScreen - Shows 25 levels for a selected difficulty
 class LevelsScreen extends StatelessWidget {
   final String difficulty;
 
@@ -46,19 +46,6 @@ class LevelsScreen extends StatelessWidget {
     final levelController = LevelController.instance;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('$_difficultyTitle Levels'),
-        backgroundColor: const Color(0xFF1A1A2E),
-        elevation: 0,
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            playClickSound();
-            Navigator.pop(context);
-          },
-        ),
-      ),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -67,78 +54,67 @@ class LevelsScreen extends StatelessWidget {
             colors: [Color(0xFF0F3460), Color(0xFF1A1A2E)],
           ),
         ),
-        child: Column(
-          children: [
-            // Difficulty header
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              color: _difficultyColor.withOpacity(0.2),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(_getDifficultyIcon(), color: _difficultyColor, size: 28),
-                  const SizedBox(width: 12),
-                  Text(
-                    '$_difficultyTitle Mode',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: _difficultyColor,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Levels grid
-            Expanded(
-              child: Obx(
-                () {
-                  final unlockedLevel =
-                      levelController.unlockedLevels[difficulty] ?? 1;
-                  final completed = levelController.completedStreaks.toList();
-
-                  return GridView.builder(
-                    padding: const EdgeInsets.all(16),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 4,
-                      childAspectRatio: 1,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                    ),
-                    itemCount: LevelConfigGenerator.maxLevel,
-                    itemBuilder: (context, index) {
-                      final level = index + 1;
-                      final config =
-                          levelController.generateLevel(difficulty, level);
-                      final isUnlocked = level <= unlockedLevel;
-                      final isCompleted = config.streaks.asMap().keys.every(
-                            (streakIndex) => completed.contains(
-                              levelController.streakKey(
-                                difficulty,
-                                level,
-                                streakIndex + 1,
-                              ),
-                            ),
-                          );
-
-                      return _LevelTile(
-                        level: level,
-                        isUnlocked: isUnlocked,
-                        isCompleted: isCompleted,
-                        color: _difficultyColor,
-                        onTap: isUnlocked
-                            ? () => _navigateToStreak(context, level)
-                            : null,
-                      );
-                    },
-                  );
+        child: SafeArea(
+          child: Column(
+            children: [
+              _ScreenHeader(
+                title: '$_difficultyTitle Mode',
+                subtitle: 'Choose a level',
+                icon: _getDifficultyIcon(),
+                color: _difficultyColor,
+                onBack: () {
+                  playClickSound();
+                  Navigator.pop(context);
                 },
               ),
-            ),
-          ],
+              Expanded(
+                child: Obx(
+                  () {
+                    final unlockedLevel =
+                        levelController.unlockedLevels[difficulty] ?? 1;
+                    final completed = levelController.completedStreaks.toList();
+
+                    return GridView.builder(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 18),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 4,
+                        childAspectRatio: 1,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                      ),
+                      itemCount: LevelConfigGenerator.maxLevel,
+                      itemBuilder: (context, index) {
+                        final level = index + 1;
+                        final config =
+                            levelController.generateLevel(difficulty, level);
+                        final isUnlocked = level <= unlockedLevel;
+                        final isCompleted = config.streaks.asMap().keys.every(
+                              (streakIndex) => completed.contains(
+                                levelController.streakKey(
+                                  difficulty,
+                                  level,
+                                  streakIndex + 1,
+                                ),
+                              ),
+                            );
+
+                        return _LevelTile(
+                          level: level,
+                          isUnlocked: isUnlocked,
+                          isCompleted: isCompleted,
+                          color: _difficultyColor,
+                          onTap: isUnlocked
+                              ? () => _navigateToStreak(context, level)
+                              : null,
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -167,6 +143,67 @@ class LevelsScreen extends StatelessWidget {
           difficulty: difficulty,
           level: level,
         ),
+      ),
+    );
+  }
+}
+
+class _ScreenHeader extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onBack;
+
+  const _ScreenHeader({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.color,
+    required this.onBack,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(8, 8, 18, 14),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.18),
+        border: Border(bottom: BorderSide(color: color.withOpacity(0.28))),
+      ),
+      child: Row(
+        children: [
+          SoundTap(
+            onTap: onBack,
+            child: const SizedBox(
+              width: 48,
+              height: 48,
+              child: Icon(Icons.arrow_back, color: Colors.white, size: 30),
+            ),
+          ),
+          Icon(icon, color: color, size: 30),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: const TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -205,16 +242,11 @@ class _LevelTile extends StatelessWidget {
         ),
         child: Stack(
           children: [
-            // Level number
             Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  if (isCompleted)
-                    const Icon(Icons.check_circle,
-                        color: Colors.greenAccent, size: 30)
-                  else
-                    Text(
+              child: isCompleted
+                  ? const Icon(Icons.check_circle,
+                      color: Colors.greenAccent, size: 30)
+                  : Text(
                       '$level',
                       style: TextStyle(
                         fontSize: 24,
@@ -222,11 +254,7 @@ class _LevelTile extends StatelessWidget {
                         color: isUnlocked ? Colors.white : Colors.grey,
                       ),
                     ),
-                ],
-              ),
             ),
-
-            // Locked overlay
             if (!isUnlocked)
               Positioned.fill(
                 child: Container(

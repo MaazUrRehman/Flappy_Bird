@@ -1,4 +1,3 @@
-
 import 'dart:math';
 import 'package:flame/components.dart';
 import 'package:flame/collisions.dart';
@@ -9,7 +8,6 @@ import 'bird.dart';
 
 class Coin extends CircleComponent
     with CollisionCallbacks, HasGameRef<FlappyBirdGame> {
-
   double speed = 200;
   double rotationSpeed = 3;
 
@@ -40,11 +38,11 @@ class Coin extends CircleComponent
     this.coinValue = 1,
     this.radius = 7,
   }) : super(
-    radius: 7,
-    position: position,
-    anchor: Anchor.center,
-    paint: Paint(),
-  );
+          radius: 7,
+          position: position,
+          anchor: Anchor.center,
+          paint: Paint(),
+        );
 
   @override
   Future<void> onLoad() async {
@@ -120,6 +118,10 @@ class Coin extends CircleComponent
 
     _time += dt;
 
+    if (gameRef.isCountdownActive) {
+      return;
+    }
+
     if (!_isCollected) {
       // ✅ ONLY horizontal movement - right to left (same as pipes)
       position.x -= speed * dt;
@@ -158,7 +160,8 @@ class Coin extends CircleComponent
 
   void _updateGradients() {
     _coinGradient.shader = RadialGradient(
-      center: Alignment(0.2 + sin(_time * 5) * 0.05, 0.3 + cos(_time * 4) * 0.05),
+      center:
+          Alignment(0.2 + sin(_time * 5) * 0.05, 0.3 + cos(_time * 4) * 0.05),
       radius: 0.8,
       colors: const [
         Color(0xFFFFF8E7),
@@ -237,7 +240,8 @@ class Coin extends CircleComponent
   void _renderSparkles(Canvas canvas) {
     for (var sparkle in _sparkles) {
       final sparklePaint = Paint()
-        ..color = Colors.white.withOpacity(0.5 + sin(_time * sparkle.speed * 10) * 0.3);
+        ..color = Colors.white
+            .withOpacity(0.5 + sin(_time * sparkle.speed * 10) * 0.3);
 
       final x = cos(sparkle.angle + _time * 2) * sparkle.distance;
       final y = sin(sparkle.angle + _time * 2) * sparkle.distance;
@@ -297,7 +301,8 @@ class Coin extends CircleComponent
   }
 
   @override
-  void onCollisionStart(Set<Vector2> intersectionPoints, PositionComponent other) {
+  void onCollisionStart(
+      Set<Vector2> intersectionPoints, PositionComponent other) {
     super.onCollisionStart(intersectionPoints, other);
 
     if (other is Bird && !_isCollected) {

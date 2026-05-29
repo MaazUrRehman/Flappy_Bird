@@ -142,6 +142,7 @@ class FlappyBirdGame extends FlameGame with TapDetector, HasCollisionDetection {
     if (!_isCountdownActive) return;
     _isCountdownActive = false;
     _isUserControlEnabled = true;
+    _isReviveCountdownActive = false;
     _countdownPending = false;
     _applyDifficultySettings();
   }
@@ -730,12 +731,17 @@ class FlappyBirdGame extends FlameGame with TapDetector, HasCollisionDetection {
   }
 
   void autoFlyBird() {
-    if (!isGameOver && !isPaused && bird.isAlive) {
+    if (!isGameOver &&
+        !isPaused &&
+        !_isCountdownActive &&
+        _isUserControlEnabled &&
+        bird.isAlive) {
       bird.jump();
     }
   }
 
-  void reviveBird({bool enableUserControl = true}) {
+  void reviveBird(
+      {bool enableUserControl = true, bool resumeEngineAfterRevive = true}) {
     if (isGameOver) {
       print("🕊️ Reviving bird...");
 
@@ -747,12 +753,12 @@ class FlappyBirdGame extends FlameGame with TapDetector, HasCollisionDetection {
       _isReviveCountdownActive = !enableUserControl;
 
       // ✅ Call bird's revive method
-      bird.revive(); // Use the new revive method
+      bird.revive();
 
-      // Resume the engine
-      resumeEngine();
-
-      print("✅ Game resumed!");
+      if (resumeEngineAfterRevive) {
+        resumeEngine();
+        print("✅ Game resumed!");
+      }
     }
   }
 
