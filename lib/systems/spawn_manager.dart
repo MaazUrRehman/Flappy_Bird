@@ -50,7 +50,7 @@ class SpawnManager extends Component with HasGameRef<FlappyBirdGame> {
       return;
     }
 
-    spawnTimer += dt;
+    spawnTimer += dt * gameRef.motionFactor;
 
     if (spawnTimer >= spawnInterval) {
       spawnTimer = 0;

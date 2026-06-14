@@ -532,7 +532,8 @@ class Bird extends RectangleComponent
     }
 
     final step = dt.clamp(0.0, 1 / 30).toDouble();
-    _timeAlive += step;
+    final animationStep = step * gameRef.animationFactor;
+    _timeAlive += animationStep;
 
     if (gameRef.isCountdownActive) {
       velocity = 0;
@@ -558,7 +559,7 @@ class Bird extends RectangleComponent
 
     // Scale pulse
     if (_scalePulse > 0) {
-      _scalePulse -= dt * 5;
+      _scalePulse -= dt * 5 * gameRef.animationFactor;
       double s = 1.0 + sin(_scalePulse * 20) * 0.1;
       scale.setValues(s, s);
     } else {

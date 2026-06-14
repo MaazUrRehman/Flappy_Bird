@@ -3,9 +3,10 @@ import 'dart:math';
 import 'package:flame/components.dart';
 import 'package:flutter/material.dart';
 
+import '../game/flappy_bird_game.dart';
 import '../models/environment_theme.dart';
 
-class Background extends Component with HasGameRef {
+class Background extends Component with HasGameRef<FlappyBirdGame> {
   final List<_AmbientParticle> _particles = [];
   final Random _random = Random(21);
   double _time = 0;
@@ -44,14 +45,16 @@ class Background extends Component with HasGameRef {
 
   @override
   void update(double dt) {
-    _time += dt;
+    final motionDt = dt * gameRef.motionFactor;
+    final animationDt = dt * gameRef.animationFactor;
+    _time += animationDt;
     final theme = EnvironmentTheme.current();
     final weatherBoost = _weatherBoost(theme.id);
     for (final particle in _particles) {
-      particle.x -= particle.speed * weatherBoost * dt;
-      particle.y += sin(_time * 1.4 + particle.phase) * dt * 10;
+      particle.x -= particle.speed * weatherBoost * motionDt;
+      particle.y += sin(_time * 1.4 + particle.phase) * animationDt * 10;
       if (_fallsDown(theme.id)) {
-        particle.y += particle.speed * 0.8 * dt;
+        particle.y += particle.speed * 0.8 * motionDt;
       }
       if (particle.x < -24 || particle.y > gameRef.size.y + 24) {
         particle.x = gameRef.size.x + _random.nextDouble() * 80;

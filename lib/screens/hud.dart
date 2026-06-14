@@ -553,16 +553,17 @@ class HUD extends Component with HasGameRef<FlappyBirdGame> {
   }
 
   void _updateScales(double dt) {
+    final animationDt = dt * gameRef.animationFactor;
     if (_coinScale > 1.0) {
-      _coinScale = (_coinScale - dt * 6).clamp(1.0, 1.5);
+      _coinScale = (_coinScale - animationDt * 6).clamp(1.0, 1.5);
       _coinText.scale = Vector2(_coinScale, _coinScale);
     }
     if (_scoreScale > 1.0) {
-      _scoreScale = (_scoreScale - dt * 6).clamp(1.0, 1.5);
+      _scoreScale = (_scoreScale - animationDt * 6).clamp(1.0, 1.5);
       _scoreText.scale = Vector2(_scoreScale, _scoreScale);
     }
     if (_distanceScale > 1.0) {
-      _distanceScale = (_distanceScale - dt * 6).clamp(1.0, 1.5);
+      _distanceScale = (_distanceScale - animationDt * 6).clamp(1.0, 1.5);
       _distanceText.scale = Vector2(_distanceScale, _distanceScale);
     }
   }

@@ -4,9 +4,10 @@ import 'dart:math';
 import 'package:flame/components.dart';
 import 'package:flutter/material.dart';
 
+import '../game/flappy_bird_game.dart';
 import '../models/environment_theme.dart';
 
-class Ground extends RectangleComponent with HasGameRef {
+class Ground extends RectangleComponent with HasGameRef<FlappyBirdGame> {
   late RectangleComponent _dirtLayer;
   late RectangleComponent _detailLayer;
 
@@ -151,16 +152,18 @@ class Ground extends RectangleComponent with HasGameRef {
   @override
   void update(double dt) {
     super.update(dt);
-    _time += dt;
+    final motionDt = dt * gameRef.motionFactor;
+    final animationDt = dt * gameRef.animationFactor;
+    _time += animationDt;
 
-    _scrollOffset += _scrollSpeed * dt;
+    _scrollOffset += _scrollSpeed * motionDt;
     if (_scrollOffset >= size.x) {
       _scrollOffset -= size.x;
     }
 
     // Animate grass blades
     for (var grass in _grassBlades) {
-      grass.update(dt, _time);
+      grass.update(animationDt, _time);
     }
   }
 

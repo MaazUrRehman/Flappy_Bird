@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../controllers/game_state_controller.dart';
 import '../game/flappy_bird_game.dart';
 import '../widgets/sound_tap.dart';
 import 'mini_games/word_game_modal.dart'; // Import the new word game
@@ -130,7 +131,7 @@ class _GameOverUIState extends State<GameOverUI> {
           ),
           const SizedBox(height: 28),
           AnimatedSwitcher(
-            duration: const Duration(milliseconds: 250),
+            duration: Duration(milliseconds: _reducedMotion ? 450 : 250),
             transitionBuilder: (child, animation) {
               return ScaleTransition(scale: animation, child: child);
             },
@@ -266,5 +267,13 @@ class _GameOverUIState extends State<GameOverUI> {
   void _stopSolvedCountdown() {
     _solvedCountdownTimer?.cancel();
     _solvedCountdownTimer = null;
+  }
+
+  bool get _reducedMotion {
+    try {
+      return GameStateController.instance.reducedMotionEnabled.value;
+    } catch (e) {
+      return false;
+    }
   }
 }

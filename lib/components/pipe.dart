@@ -102,13 +102,14 @@ class Pipe extends RectangleComponent
   void update(double dt) {
     super.update(dt);
 
-    _time += dt;
+    final animationDt = dt * gameRef.animationFactor;
+    _time += animationDt;
 
     if (gameRef.isCountdownActive) {
       return;
     }
 
-    position.x -= speed * dt;
+    position.x -= speed * gameRef.motionFactor * dt;
     if (_isMoving) {
       position.y = _baseY + sin(_time * 2.2 + _movePhase) * 18;
     }
@@ -125,7 +126,7 @@ class Pipe extends RectangleComponent
     _glowIntensity = _isGlowing ? 0.5 + sin(_time * 8) * 0.3 : 0;
 
     for (final leaf in _leaves) {
-      leaf.angle += sin(_time * 2 + leaf.x) * 0.02;
+      leaf.angle += sin(_time * 2 + leaf.x) * 0.02 * gameRef.animationFactor;
     }
 
     if (position.x + size.x < -50) {

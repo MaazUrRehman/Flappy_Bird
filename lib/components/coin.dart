@@ -116,7 +116,8 @@ class Coin extends CircleComponent
   void update(double dt) {
     super.update(dt);
 
-    _time += dt;
+    final animationDt = dt * gameRef.animationFactor;
+    _time += animationDt;
 
     if (gameRef.isCountdownActive) {
       return;
@@ -124,13 +125,13 @@ class Coin extends CircleComponent
 
     if (!_isCollected) {
       // ✅ ONLY horizontal movement - right to left (same as pipes)
-      position.x -= speed * dt;
+      position.x -= speed * gameRef.motionFactor * dt;
 
       // ✅ Rotation animation only (visual only - doesn't affect position)
-      angle += rotationSpeed * dt;
+      angle += rotationSpeed * animationDt;
 
       // ✅ Pulse effect (scale only - no position change)
-      _pulseScale += _pulseDirection * dt * 3;
+      _pulseScale += _pulseDirection * animationDt * 3;
       if (_pulseScale > 1.1) {
         _pulseScale = 1.1;
         _pulseDirection = -1;
@@ -141,7 +142,7 @@ class Coin extends CircleComponent
 
       // Update sparkles
       for (var sparkle in _sparkles) {
-        sparkle.update(dt);
+        sparkle.update(animationDt);
       }
 
       // Remove when offscreen
@@ -149,7 +150,7 @@ class Coin extends CircleComponent
         removeFromParent();
       }
     } else {
-      _collectionAnimation += dt * 5;
+      _collectionAnimation += animationDt * 5;
       if (_collectionAnimation >= 1) {
         removeFromParent();
       }

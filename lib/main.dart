@@ -18,14 +18,18 @@ void main() async {
   await Hive.initFlutter();
 
   // Initialize GetX controllers and services
-  _initializeServices();
+  await _initializeServices();
 
   runApp(const FlappyBirdApp());
 }
 
-void _initializeServices() {
+Future<void> _initializeServices() async {
+  // Initialize AudioManager first so restored settings can apply immediately.
+  Get.put(AudioManager(), permanent: true);
+
   // Initialize GameStateController (persistent storage)
-  Get.put(GameStateController(), permanent: true);
+  final gameState = Get.put(GameStateController(), permanent: true);
+  await gameState.initializeStorage();
 
   // Initialize GameConfigController (bird/environment selection)
   Get.put(GameConfigController(), permanent: true);
@@ -35,9 +39,6 @@ void _initializeServices() {
 
   // Initialize LevelController (dynamic level tasks/unlocks)
   Get.put(LevelController(), permanent: true);
-
-  // Initialize AudioManager (sound system)
-  Get.put(AudioManager(), permanent: true);
 }
 
 class FlappyBirdApp extends StatelessWidget {

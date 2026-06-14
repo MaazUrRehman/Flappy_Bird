@@ -2,7 +2,10 @@
 
 import 'package:get/get.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'level_controller.dart';
+import '../services/audio_manager.dart';
 
 /// GameStateController - Manages persistent game state including coins
 /// Uses Hive for local storage
@@ -22,6 +25,14 @@ class GameStateController extends GetxController {
   static const String _bestStreakKey = 'bestStreak';
   static const String _musicEnabledKey = 'musicEnabled';
   static const String _sfxEnabledKey = 'sfxEnabled';
+  static const String _musicVolumeKey = 'musicVolume';
+  static const String _sfxVolumeKey = 'sfxVolume';
+  static const String _screenRotationEnabledKey = 'screenRotationEnabled';
+  static const String _reducedMotionEnabledKey = 'reducedMotionEnabled';
+  static const String _legacyMusicVolumeKey = 'settings_music_volume';
+  static const String _legacySfxVolumeKey = 'settings_sfx_volume';
+  static const String _legacyRotationKey = 'settings_rotation_enabled';
+  static const String _legacyReducedMotionKey = 'settings_reduced_motion';
   static const String _selectedBirdKey = 'selectedBird';
   static const String _selectedEnvironmentKey = 'selectedEnvironment';
   static const String _unlockedBirdsKey = 'unlockedBirds';
@@ -37,6 +48,10 @@ class GameStateController extends GetxController {
   final RxInt bestStreak = 0.obs;
   final RxBool musicEnabled = true.obs;
   final RxBool sfxEnabled = true.obs;
+  final RxDouble musicVolume = 0.7.obs;
+  final RxDouble sfxVolume = 0.85.obs;
+  final RxBool screenRotationEnabled = true.obs;
+  final RxBool reducedMotionEnabled = false.obs;
   final RxString selectedBird = 'default'.obs;
   final RxString selectedEnvironment = 'default'.obs;
   final RxList<String> unlockedBirds = <String>['default'].obs;
@@ -47,16 +62,27 @@ class GameStateController extends GetxController {
   // Level progress storage
   // Format: "difficulty_level_streak" -> bestScore
   final RxMap<String, int> levelProgress = <String, int>{}.obs;
+  Future<void>? _initializationFuture;
 
   @override
   void onInit() {
     super.onInit();
-    _initializeStorage();
+    initializeStorage();
+  }
+
+  Future<void> initializeStorage() async {
+    if (_initializationFuture != null) {
+      return _initializationFuture;
+    }
+
+    _initializationFuture = _initializeStorage();
+    return _initializationFuture;
   }
 
   Future<void> _initializeStorage() async {
     try {
       await Hive.initFlutter();
+      final prefs = await SharedPreferences.getInstance();
 
       // Open boxes
       final gameStateBox = await Hive.openBox(_gameStateBox);
@@ -72,11 +98,24 @@ class GameStateController extends GetxController {
       bestStreak.value =
           gameStateBox.get(_bestStreakKey, defaultValue: 0) as int;
 
-      // Load settings
-      musicEnabled.value =
-          settingsBox.get(_musicEnabledKey, defaultValue: true) as bool;
-      sfxEnabled.value =
-          settingsBox.get(_sfxEnabledKey, defaultValue: true) as bool;
+      // Load settings from SharedPreferences, with old Hive/settings-screen
+      // keys as fallbacks for existing installs.
+      musicEnabled.value = prefs.getBool(_musicEnabledKey) ??
+          (settingsBox.get(_musicEnabledKey, defaultValue: true) as bool);
+      sfxEnabled.value = prefs.getBool(_sfxEnabledKey) ??
+          (settingsBox.get(_sfxEnabledKey, defaultValue: true) as bool);
+      musicVolume.value = prefs.getDouble(_musicVolumeKey) ??
+          prefs.getDouble(_legacyMusicVolumeKey) ??
+          0.7;
+      sfxVolume.value = prefs.getDouble(_sfxVolumeKey) ??
+          prefs.getDouble(_legacySfxVolumeKey) ??
+          0.85;
+      screenRotationEnabled.value = prefs.getBool(_screenRotationEnabledKey) ??
+          prefs.getBool(_legacyRotationKey) ??
+          true;
+      reducedMotionEnabled.value = prefs.getBool(_reducedMotionEnabledKey) ??
+          prefs.getBool(_legacyReducedMotionKey) ??
+          false;
       selectedBird.value =
           settingsBox.get(_selectedBirdKey, defaultValue: 'default') as String;
       selectedEnvironment.value = settingsBox.get(_selectedEnvironmentKey,
@@ -108,6 +147,7 @@ class GameStateController extends GetxController {
       }
 
       await _ensureFreeShopItems();
+      await applyAllSettings();
     } catch (e) {
       // ignore: avoid_print
       print('GameStateController: Error initializing storage: $e');
@@ -225,20 +265,106 @@ class GameStateController extends GetxController {
   // ================= SETTINGS =================
 
   /// Toggle music
-  Future<void> toggleMusic() async {
-    musicEnabled.value = !musicEnabled.value;
+  Future<void> toggleMusic([bool? enabled]) async {
+    musicEnabled.value = enabled ?? !musicEnabled.value;
+    await applyMusicSettings();
     await _saveSettings();
   }
 
   /// Toggle SFX
-  Future<void> toggleSfx() async {
-    sfxEnabled.value = !sfxEnabled.value;
+  Future<void> toggleSfx([bool? enabled]) async {
+    sfxEnabled.value = enabled ?? !sfxEnabled.value;
+    await applySfxSettings();
     await _saveSettings();
+  }
+
+  Future<void> setMusicVolume(double volume) async {
+    musicVolume.value = volume.clamp(0.0, 1.0);
+    if (Get.isRegistered<AudioManager>()) {
+      AudioManager.instance.setMusicVolume(musicVolume.value);
+    }
+    await _saveSettings();
+  }
+
+  Future<void> setSfxVolume(double volume) async {
+    sfxVolume.value = volume.clamp(0.0, 1.0);
+    if (Get.isRegistered<AudioManager>()) {
+      AudioManager.instance.setSfxVolume(sfxVolume.value);
+    }
+    await _saveSettings();
+  }
+
+  Future<void> toggleScreenRotation([bool? enabled]) async {
+    screenRotationEnabled.value = enabled ?? !screenRotationEnabled.value;
+    await applyOrientationSettings();
+    await _saveSettings();
+  }
+
+  Future<void> toggleReducedMotion([bool? enabled]) async {
+    reducedMotionEnabled.value = enabled ?? !reducedMotionEnabled.value;
+    applyReducedMotionSettings();
+    await _saveSettings();
+  }
+
+  double get motionFactor => reducedMotionEnabled.value ? 0.55 : 1.0;
+  double get animationFactor => reducedMotionEnabled.value ? 0.55 : 1.0;
+  double get distanceFactor => reducedMotionEnabled.value ? 0.45 : 1.0;
+
+  Future<void> applyAllSettings() async {
+    await applyMusicSettings();
+    await applySfxSettings();
+    await applyOrientationSettings();
+    applyReducedMotionSettings();
+  }
+
+  Future<void> applyMusicSettings() async {
+    if (!Get.isRegistered<AudioManager>()) return;
+    final audio = AudioManager.instance;
+    await audio.setMusicEnabled(musicEnabled.value);
+    if (musicEnabled.value) {
+      audio.setMusicVolume(musicVolume.value);
+      await audio.playBackgroundMusic();
+    }
+  }
+
+  Future<void> applySfxSettings() async {
+    if (!Get.isRegistered<AudioManager>()) return;
+    final audio = AudioManager.instance;
+    await audio.setSfxEnabled(sfxEnabled.value);
+    if (sfxEnabled.value) {
+      audio.setSfxVolume(sfxVolume.value);
+    }
+  }
+
+  Future<void> applyOrientationSettings() {
+    if (screenRotationEnabled.value) {
+      return SystemChrome.setPreferredOrientations(const [
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+    }
+
+    return SystemChrome.setPreferredOrientations(const [
+      DeviceOrientation.portraitUp,
+    ]);
+  }
+
+  void applyReducedMotionSettings() {
+    update();
   }
 
   Future<void> _saveSettings() async {
     try {
+      final prefs = await SharedPreferences.getInstance();
       final box = await Hive.openBox(_settingsBox);
+      await prefs.setBool(_musicEnabledKey, musicEnabled.value);
+      await prefs.setBool(_sfxEnabledKey, sfxEnabled.value);
+      await prefs.setDouble(_musicVolumeKey, musicVolume.value);
+      await prefs.setDouble(_sfxVolumeKey, sfxVolume.value);
+      await prefs.setBool(
+          _screenRotationEnabledKey, screenRotationEnabled.value);
+      await prefs.setBool(_reducedMotionEnabledKey, reducedMotionEnabled.value);
       await box.put(_musicEnabledKey, musicEnabled.value);
       await box.put(_sfxEnabledKey, sfxEnabled.value);
     } catch (e) {

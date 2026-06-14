@@ -359,6 +359,29 @@ class FlappyBirdGame extends FlameGame with TapDetector, HasCollisionDetection {
   bool get isPausedState => isPaused;
   ColorScheme get colorScheme => _colorScheme;
   ScoreManager? get scoreManagerInstance => scoreManager;
+  double get motionFactor {
+    try {
+      return GameStateController.instance.motionFactor;
+    } catch (e) {
+      return 1.0;
+    }
+  }
+
+  double get animationFactor {
+    try {
+      return GameStateController.instance.animationFactor;
+    } catch (e) {
+      return 1.0;
+    }
+  }
+
+  double get distanceFactor {
+    try {
+      return GameStateController.instance.distanceFactor;
+    } catch (e) {
+      return 1.0;
+    }
+  }
 
   @override
   Future<void> onLoad() async {
@@ -366,7 +389,7 @@ class FlappyBirdGame extends FlameGame with TapDetector, HasCollisionDetection {
 
     await _loadBestScores();
     try {
-      AudioManager.instance.playBackgroundMusic();
+      await GameStateController.instance.applyMusicSettings();
     } catch (e) {
       // AudioManager may not be initialized yet.
     }
@@ -841,7 +864,10 @@ class FlappyBirdGame extends FlameGame with TapDetector, HasCollisionDetection {
         !isPaused &&
         !_isCountdownActive &&
         bird.isAlive) {
-      _distance += 100 * dt;
+      // Apply reduced motion factor directly to distance calculation
+      final distanceMultiplier =
+          GameStateController.instance.reducedMotionEnabled.value ? 0.45 : 1.0;
+      _distance += 100 * distanceMultiplier * dt;
       _survivalSeconds += dt;
       _applyHitStop(dt);
       updateTaskProgress('distance', _distance.toInt());

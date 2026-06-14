@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../game/flappy_bird_game.dart';
 import '../widgets/sound_tap.dart';
+import '../controllers/game_state_controller.dart';
 import '../controllers/streak_controller.dart';
 
 class PauseButtonOverlay extends StatelessWidget {
@@ -61,8 +62,10 @@ class _PauseMenuOverlayState extends State<PauseMenuOverlay>
   @override
   void initState() {
     super.initState();
+    final reducedMotion = Get.isRegistered<GameStateController>() &&
+        GameStateController.instance.reducedMotionEnabled.value;
     _animationController = AnimationController(
-      duration: const Duration(milliseconds: 300),
+      duration: Duration(milliseconds: reducedMotion ? 550 : 300),
       vsync: this,
     );
     _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(

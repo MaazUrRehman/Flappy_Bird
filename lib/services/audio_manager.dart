@@ -10,12 +10,17 @@ class AudioManager extends GetxService {
   static AudioManager get instance => Get.find<AudioManager>();
 
   // Audio players for different sound types
-  AudioPlayer? _bgMusicPlayer;
-  AudioPlayer? _sfxPlayer;
+  final Set<AudioPlayer> _activeSfxPlayers = {};
+  int _musicSession = 0;
+  int _sfxSession = 0;
 
   // Mute state
   bool _isMuted = false;
+  bool _musicEnabled = true;
+  bool _sfxEnabled = true;
   bool get isMuted => _isMuted;
+  bool get musicEnabled => _musicEnabled;
+  bool get sfxEnabled => _sfxEnabled;
 
   // Volume levels
   double _musicVolume = 0.5;
@@ -27,6 +32,7 @@ class AudioManager extends GetxService {
   @override
   void onInit() {
     super.onInit();
+    FlameAudio.bgm.initialize();
     _initializeAudio();
   }
 
@@ -52,13 +58,14 @@ class AudioManager extends GetxService {
 
   /// Start background music (loops indefinitely)
   Future<void> playBackgroundMusic() async {
-    if (_isMuted) return;
+    if (_isMuted || !_musicEnabled) return;
 
+    final session = ++_musicSession;
     try {
-      _bgMusicPlayer?.stop();
-      _bgMusicPlayer =
-          await FlameAudio.play('background.mp3', volume: _musicVolume);
-      _bgMusicPlayer?.setReleaseMode(ReleaseMode.loop);
+      await FlameAudio.bgm.play('background.mp3', volume: _musicVolume);
+      if (session != _musicSession || _isMuted || !_musicEnabled) {
+        await FlameAudio.bgm.stop();
+      }
     } catch (e) {
       print('Background music not available');
     }
@@ -67,20 +74,22 @@ class AudioManager extends GetxService {
   Future<void> playBgMusic() => playBackgroundMusic();
 
   /// Stop background music
-  void stopBackgroundMusic() {
-    _bgMusicPlayer?.stop();
-    _bgMusicPlayer = null;
+  Future<void> stopBackgroundMusic() async {
+    _musicSession++;
+    await FlameAudio.bgm.stop();
   }
 
   /// Pause background music
-  void pauseBackgroundMusic() {
-    _bgMusicPlayer?.pause();
+  Future<void> pauseBackgroundMusic() async {
+    if (_musicEnabled) {
+      await FlameAudio.bgm.pause();
+    }
   }
 
   /// Resume background music
-  void resumeBackgroundMusic() {
-    if (!_isMuted) {
-      _bgMusicPlayer?.resume();
+  Future<void> resumeBackgroundMusic() async {
+    if (!_isMuted && _musicEnabled) {
+      await FlameAudio.bgm.resume();
     }
   }
 
@@ -88,10 +97,10 @@ class AudioManager extends GetxService {
 
   /// Play game over sound
   Future<void> playGameOverSound() async {
-    if (_isMuted) return;
+    if (_isMuted || !_sfxEnabled) return;
 
     try {
-      await FlameAudio.play('game_over.mp3', volume: _sfxVolume);
+      await _playOneShot('game_over.mp3');
     } catch (e) {
       await _playFallbackTone(200, 0.5);
     }
@@ -99,10 +108,10 @@ class AudioManager extends GetxService {
 
   /// Play coin collection sound
   Future<void> playCoinCollectSound() async {
-    if (_isMuted) return;
+    if (_isMuted || !_sfxEnabled) return;
 
     try {
-      await FlameAudio.play('coin_collect.mp3', volume: _sfxVolume);
+      await _playOneShot('coin_collect.mp3');
     } catch (e) {
       await _playFallbackTone(800, 0.1);
     }
@@ -110,10 +119,10 @@ class AudioManager extends GetxService {
 
   /// Play jump sound
   Future<void> playJumpSound() async {
-    if (_isMuted) return;
+    if (_isMuted || !_sfxEnabled) return;
 
     try {
-      await FlameAudio.play('jump.mp3', volume: _sfxVolume);
+      await _playOneShot('jump.mp3');
     } catch (e) {
       await _playFallbackTone(600, 0.08);
     }
@@ -121,21 +130,21 @@ class AudioManager extends GetxService {
 
   /// Play button click sound
   Future<void> playButtonClickSound() async {
-    if (_isMuted) return;
+    if (_isMuted || !_sfxEnabled) return;
 
     final now = DateTime.now();
     if (now.difference(_lastClickAt).inMilliseconds < 80) return;
     _lastClickAt = now;
 
     try {
-      await FlameAudio.play('button_click.mp3', volume: _sfxVolume);
+      await _playOneShot('button_click.mp3');
     } catch (e) {
       await _playFallbackTone(500, 0.05);
     }
   }
 
   Future<void> playSfx(String sound) async {
-    if (_isMuted) return;
+    if (_isMuted || !_sfxEnabled) return;
 
     switch (sound) {
       case 'button':
@@ -158,7 +167,7 @@ class AudioManager extends GetxService {
         return playStreakCompleteSound();
       default:
         try {
-          await FlameAudio.play(sound, volume: _sfxVolume);
+          await _playOneShot(sound);
         } catch (e) {
           print('AudioManager: Missing SFX $sound');
         }
@@ -169,41 +178,49 @@ class AudioManager extends GetxService {
 
   /// Play correct answer sound (positive)
   Future<void> playCorrectAnswerSound() async {
-    if (_isMuted) return;
+    if (_isMuted || !_sfxEnabled) return;
 
     try {
-      await FlameAudio.play('correct_answer.mp3', volume: _sfxVolume);
+      await _playOneShot('correct_answer.mp3');
     } catch (e) {
       await _playFallbackTone(600, 0.15);
+      if (_isMuted || !_sfxEnabled) return;
       await Future.delayed(const Duration(milliseconds: 100));
+      if (_isMuted || !_sfxEnabled) return;
       await _playFallbackTone(800, 0.15);
     }
   }
 
   /// Play wrong answer sound (negative)
   Future<void> playWrongAnswerSound() async {
-    if (_isMuted) return;
+    if (_isMuted || !_sfxEnabled) return;
 
     try {
-      await FlameAudio.play('wrong_answer.mp3', volume: _sfxVolume);
+      await _playOneShot('wrong_answer.mp3');
     } catch (e) {
       await _playFallbackTone(400, 0.2);
+      if (_isMuted || !_sfxEnabled) return;
       await Future.delayed(const Duration(milliseconds: 150));
+      if (_isMuted || !_sfxEnabled) return;
       await _playFallbackTone(200, 0.3);
     }
   }
 
   /// Play streak complete sound
   Future<void> playStreakCompleteSound() async {
-    if (_isMuted) return;
+    if (_isMuted || !_sfxEnabled) return;
 
     try {
-      await FlameAudio.play('streak_complete.mp3', volume: _sfxVolume);
+      await _playOneShot('streak_complete.mp3');
     } catch (e) {
       await _playFallbackTone(700, 0.1);
+      if (_isMuted || !_sfxEnabled) return;
       await Future.delayed(const Duration(milliseconds: 80));
+      if (_isMuted || !_sfxEnabled) return;
       await _playFallbackTone(900, 0.1);
+      if (_isMuted || !_sfxEnabled) return;
       await Future.delayed(const Duration(milliseconds: 80));
+      if (_isMuted || !_sfxEnabled) return;
       await _playFallbackTone(1100, 0.15);
     }
   }
@@ -213,12 +230,29 @@ class AudioManager extends GetxService {
   /// Set music volume (0.0 to 1.0)
   void setMusicVolume(double volume) {
     _musicVolume = volume.clamp(0.0, 1.0);
-    _bgMusicPlayer?.setVolume(_musicVolume);
+    if (_musicEnabled) {
+      FlameAudio.bgm.audioPlayer.setVolume(_musicVolume);
+    }
   }
 
   /// Set SFX volume (0.0 to 1.0)
   void setSfxVolume(double volume) {
     _sfxVolume = volume.clamp(0.0, 1.0);
+  }
+
+  Future<void> setMusicEnabled(bool enabled) async {
+    _musicEnabled = enabled;
+    if (!enabled) {
+      await stopBackgroundMusic();
+    }
+  }
+
+  Future<void> setSfxEnabled(bool enabled) async {
+    _sfxEnabled = enabled;
+    _sfxSession++;
+    if (!enabled) {
+      await _stopActiveSfx();
+    }
   }
 
   // ================= MUTE CONTROLS =================
@@ -228,6 +262,7 @@ class AudioManager extends GetxService {
     _isMuted = !_isMuted;
     if (_isMuted) {
       stopBackgroundMusic();
+      _stopActiveSfx();
     } else {
       playBackgroundMusic();
     }
@@ -238,6 +273,39 @@ class AudioManager extends GetxService {
     _isMuted = muted;
     if (_isMuted) {
       stopBackgroundMusic();
+      _stopActiveSfx();
+    }
+  }
+
+  Future<void> _playOneShot(String file) async {
+    if (_isMuted || !_sfxEnabled) return;
+
+    final session = _sfxSession;
+    final player = await FlameAudio.play(file, volume: _sfxVolume);
+
+    if (session != _sfxSession || _isMuted || !_sfxEnabled) {
+      await player.stop();
+      await player.dispose();
+      return;
+    }
+
+    _activeSfxPlayers.add(player);
+    player.onPlayerComplete.listen((_) {
+      _activeSfxPlayers.remove(player);
+      player.dispose();
+    });
+  }
+
+  Future<void> _stopActiveSfx() async {
+    final players = List<AudioPlayer>.from(_activeSfxPlayers);
+    _activeSfxPlayers.clear();
+    for (final player in players) {
+      try {
+        await player.stop();
+        await player.dispose();
+      } catch (e) {
+        // Player may already have completed/disposed.
+      }
     }
   }
 
@@ -250,8 +318,8 @@ class AudioManager extends GetxService {
 
   @override
   void onClose() {
-    _bgMusicPlayer?.dispose();
-    _sfxPlayer?.dispose();
+    FlameAudio.bgm.dispose();
+    _stopActiveSfx();
     super.onClose();
   }
 }

@@ -1,73 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../controllers/game_state_controller.dart';
-import '../services/audio_manager.dart';
 import '../widgets/sound_tap.dart';
 
-class SettingsScreen extends StatefulWidget {
+class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
-
-  @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
-}
-
-class _SettingsScreenState extends State<SettingsScreen> {
-  static const _musicVolumeKey = 'settings_music_volume';
-  static const _sfxVolumeKey = 'settings_sfx_volume';
-  static const _rotationKey = 'settings_rotation_enabled';
-  static const _reducedMotionKey = 'settings_reduced_motion';
-  static const _highContrastKey = 'settings_high_contrast';
-
-  double _musicVolume = 0.7;
-  double _sfxVolume = 0.85;
-  bool _rotationEnabled = true;
-  bool _reducedMotion = false;
-  bool _highContrast = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadSettings();
-  }
-
-  Future<void> _loadSettings() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (!mounted) return;
-    setState(() {
-      _musicVolume = prefs.getDouble(_musicVolumeKey) ?? 0.7;
-      _sfxVolume = prefs.getDouble(_sfxVolumeKey) ?? 0.85;
-      _rotationEnabled = prefs.getBool(_rotationKey) ?? true;
-      _reducedMotion = prefs.getBool(_reducedMotionKey) ?? false;
-      _highContrast = prefs.getBool(_highContrastKey) ?? false;
-    });
-    AudioManager.instance.setMusicVolume(_musicVolume);
-    AudioManager.instance.setSfxVolume(_sfxVolume);
-    _applyRotation();
-  }
-
-  Future<void> _saveBool(String key, bool value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(key, value);
-  }
-
-  Future<void> _saveDouble(String key, double value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setDouble(key, value);
-  }
-
-  void _applyRotation() {
-    if (_rotationEnabled) {
-      SystemChrome.setPreferredOrientations(DeviceOrientation.values);
-    } else {
-      SystemChrome.setPreferredOrientations([
-        DeviceOrientation.portraitUp,
-        DeviceOrientation.portraitDown,
-      ]);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -97,7 +35,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         color: Colors.white,
                         fontSize: 30,
                         fontWeight: FontWeight.w800,
-                        letterSpacing: 0.4,
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -113,7 +50,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         subtitle: 'Background soundtrack',
                         color: Colors.amber,
                         value: gameState.musicEnabled.value,
-                        onChanged: (_) => gameState.toggleMusic(),
+                        onChanged: gameState.toggleMusic,
+                      ),
+                    ),
+                    Obx(
+                      () => _SliderTile(
+                        icon: Icons.volume_up,
+                        title: 'Music Volume',
+                        color: Colors.amber,
+                        value: gameState.musicVolume.value,
+                        enabled: gameState.musicEnabled.value,
+                        onChanged: gameState.setMusicVolume,
                       ),
                     ),
                     Obx(
@@ -123,64 +70,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         subtitle: 'Jumps, coins and taps',
                         color: Colors.cyanAccent,
                         value: gameState.sfxEnabled.value,
-                        onChanged: (_) => gameState.toggleSfx(),
+                        onChanged: gameState.toggleSfx,
                       ),
                     ),
-                    _SliderTile(
-                      icon: Icons.volume_up,
-                      title: 'Music Volume',
-                      color: Colors.amber,
-                      value: _musicVolume,
-                      onChanged: (value) {
-                        setState(() => _musicVolume = value);
-                        AudioManager.instance.setMusicVolume(value);
-                        _saveDouble(_musicVolumeKey, value);
-                      },
+                    Obx(
+                      () => _SliderTile(
+                        icon: Icons.surround_sound,
+                        title: 'SFX Volume',
+                        color: Colors.lightGreenAccent,
+                        value: gameState.sfxVolume.value,
+                        enabled: gameState.sfxEnabled.value,
+                        onChanged: gameState.setSfxVolume,
+                      ),
                     ),
-                    _SliderTile(
-                      icon: Icons.surround_sound,
-                      title: 'SFX Volume',
-                      color: Colors.lightGreenAccent,
-                      value: _sfxVolume,
-                      onChanged: (value) {
-                        setState(() => _sfxVolume = value);
-                        AudioManager.instance.setSfxVolume(value);
-                        _saveDouble(_sfxVolumeKey, value);
-                      },
+                    Obx(
+                      () => _SwitchTile(
+                        icon: Icons.screen_rotation,
+                        title: 'Screen Rotation',
+                        subtitle: 'Allow portrait and landscape',
+                        color: Colors.pinkAccent,
+                        value: gameState.screenRotationEnabled.value,
+                        onChanged: gameState.toggleScreenRotation,
+                      ),
                     ),
-                    _SwitchTile(
-                      icon: Icons.screen_rotation,
-                      title: 'Screen Rotation',
-                      subtitle: 'Allow portrait and landscape',
-                      color: Colors.pinkAccent,
-                      value: _rotationEnabled,
-                      onChanged: (value) {
-                        setState(() => _rotationEnabled = value);
-                        _saveBool(_rotationKey, value);
-                        _applyRotation();
-                      },
-                    ),
-                    _SwitchTile(
-                      icon: Icons.blur_on,
-                      title: 'Reduced Motion',
-                      subtitle: 'Calmer menus and effects',
-                      color: Colors.deepPurpleAccent,
-                      value: _reducedMotion,
-                      onChanged: (value) {
-                        setState(() => _reducedMotion = value);
-                        _saveBool(_reducedMotionKey, value);
-                      },
-                    ),
-                    _SwitchTile(
-                      icon: Icons.contrast,
-                      title: 'High Contrast UI',
-                      subtitle: 'Stronger menu readability',
-                      color: Colors.orangeAccent,
-                      value: _highContrast,
-                      onChanged: (value) {
-                        setState(() => _highContrast = value);
-                        _saveBool(_highContrastKey, value);
-                      },
+                    Obx(
+                      () => _SwitchTile(
+                        icon: Icons.blur_on,
+                        title: 'Reduced Motion',
+                        subtitle: 'Calmer movement and effects',
+                        color: Colors.deepPurpleAccent,
+                        value: gameState.reducedMotionEnabled.value,
+                        onChanged: gameState.toggleReducedMotion,
+                      ),
                     ),
                   ],
                 ),
@@ -258,6 +179,7 @@ class _SliderTile extends StatelessWidget {
   final String title;
   final Color color;
   final double value;
+  final bool enabled;
   final ValueChanged<double> onChanged;
 
   const _SliderTile({
@@ -265,23 +187,27 @@ class _SliderTile extends StatelessWidget {
     required this.title,
     required this.color,
     required this.value,
+    required this.enabled,
     required this.onChanged,
   });
 
   @override
   Widget build(BuildContext context) {
-    return _SettingShell(
-      icon: icon,
-      title: title,
-      subtitle: '${(value * 100).round()}%',
-      color: color,
-      trailing: SizedBox(
-        width: 136,
-        child: Slider(
-          value: value,
-          activeColor: color,
-          inactiveColor: Colors.white24,
-          onChanged: onChanged,
+    return Opacity(
+      opacity: enabled ? 1 : 0.55,
+      child: _SettingShell(
+        icon: icon,
+        title: title,
+        subtitle: enabled ? '${(value * 100).round()}%' : 'Off',
+        color: color,
+        trailing: SizedBox(
+          width: 136,
+          child: Slider(
+            value: value,
+            activeColor: color,
+            inactiveColor: Colors.white24,
+            onChanged: enabled ? onChanged : null,
+          ),
         ),
       ),
     );
